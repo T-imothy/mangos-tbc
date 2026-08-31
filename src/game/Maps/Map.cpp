@@ -18,6 +18,7 @@
 
 #include "Maps/Map.h"
 #include "Maps/MapManager.h"
+#include "Maps/MapWorkers.h"
 #include "Entities/Player.h"
 #include "Grids/GridNotifiers.h"
 #include "Log/Log.h"
@@ -1800,6 +1801,8 @@ void Map::AddObjectToRemoveList(WorldObject* obj)
 {
     MANGOS_ASSERT(obj->GetMapId() == GetId() && obj->GetInstanceId() == GetInstanceId());
 
+    std::lock_guard<std::recursive_mutex> guard(m_removeListLock);
+
     obj->CleanupsBeforeDelete();                            // remove or simplify at least cross referenced links
 
     i_objectsToRemove.insert(obj);
@@ -1820,14 +1823,20 @@ bool Map::IsInRemoveList(WorldObject* obj) const
 
 void Map::RemoveAllObjectsInRemoveList()
 {
-    if (i_objectsToRemove.empty())
+    WorldObjectSet objectsToRemove;
+    {
+        std::lock_guard<std::recursive_mutex> guard(m_removeListLock);
+        objectsToRemove.swap(i_objectsToRemove);
+    }
+
+    if (objectsToRemove.empty())
         return;
 
     // DEBUG_LOG("Object remover 1 check.");
-    while (!i_objectsToRemove.empty())
+    while (!objectsToRemove.empty())
     {
-        WorldObject* obj = *i_objectsToRemove.begin();
-        i_objectsToRemove.erase(i_objectsToRemove.begin());
+        WorldObject* obj = *objectsToRemove.begin();
+        objectsToRemove.erase(objectsToRemove.begin());
         obj->m_inRemoveList = false;
 
         switch (obj->GetTypeId())
@@ -2753,7 +2762,10 @@ void Map::UpdateVisibility(UpdateDataMapType& update_players)
     std::unordered_set<Object*> visited;
     {
         std::set<std::pair<Object*, ObjectGuid>> createObjects;
-        std::swap(createObjects, m_objectsToClientCreateUpdate);
+        {
+            std::lock_guard<std::mutex> guard(m_updateObjectLock);
+            createObjects.swap(m_objectsToClientCreateUpdate);
+        }
         for (auto& createObj : createObjects)
         {
             createObj.first->UpdateVisibility(update_players);
@@ -2764,7 +2776,10 @@ void Map::UpdateVisibility(UpdateDataMapType& update_players)
     if (m_clientUpdateTick % 3 == 0) // every 1200ms update vis on moved objects
     {
         std::set<Object*> movementObjects;
-        std::swap(movementObjects, m_objectsToClientMovementUpdate);
+        {
+            std::lock_guard<std::mutex> guard(m_updateObjectLock);
+            movementObjects.swap(m_objectsToClientMovementUpdate);
+        }
         for (auto& movObj : movementObjects)
         {
             if (visited.find(movObj) == visited.end())
@@ -2804,35 +2819,84 @@ void Map::UpdateVisibility(UpdateDataMapType& update_players)
 
 void Map::SendObjectUpdates()
 {
-    UpdateDataMapType update_players;
-
-    while (!m_objectsToClientUpdate.empty()) // do it first to avoid sending update and create to same obj
+    std::set<Object*> objectsToUpdate;
     {
-        Object* obj = *m_objectsToClientUpdate.begin();
-        m_objectsToClientUpdate.erase(m_objectsToClientUpdate.begin());
-        obj->BuildUpdateData(update_players);
+        std::lock_guard<std::mutex> guard(m_updateObjectLock);
+        objectsToUpdate.swap(m_objectsToClientUpdate);
     }
 
-    UpdateVisibility(update_players);
+    std::vector<std::unique_ptr<UpdateDataMapType>> parallelUpdates;
+    UpdateDataMapType sequentialUpdates;
+    uint32 const chunkSize = sWorld.getConfig(CONFIG_UINT32_MAP_VISIBILITY_CHUNK_SIZE);
+    MapUpdater& updater = sMapMgr.GetObjectUpdater();
+
+    if (IsContinent() && updater.activated() && objectsToUpdate.size() >= chunkSize)
+    {
+        size_t const chunkCount = (objectsToUpdate.size() + chunkSize - 1) / chunkSize;
+        parallelUpdates.reserve(chunkCount);
+
+        std::vector<Object*> chunk;
+        chunk.reserve(chunkSize);
+        for (Object* object : objectsToUpdate)
+        {
+            chunk.push_back(object);
+            if (chunk.size() == chunkSize)
+            {
+                parallelUpdates.emplace_back(std::make_unique<UpdateDataMapType>());
+                updater.schedule_update(new ObjectUpdateBuildWorker(std::move(chunk), *parallelUpdates.back(), updater));
+                chunk.clear();
+                chunk.reserve(chunkSize);
+            }
+        }
+
+        if (!chunk.empty())
+        {
+            parallelUpdates.emplace_back(std::make_unique<UpdateDataMapType>());
+            updater.schedule_update(new ObjectUpdateBuildWorker(std::move(chunk), *parallelUpdates.back(), updater));
+        }
+
+        updater.wait();
+    }
+    else
+        for (Object* object : objectsToUpdate)
+            object->BuildUpdateData(sequentialUpdates);
+
+    auto sendUpdates = [](UpdateDataMapType& updates)
+    {
+        for (auto& updatePlayer : updates)
+            updatePlayer.second.SendData(*updatePlayer.first->GetSession());
+    };
+
+    sendUpdates(sequentialUpdates);
+    for (auto& updates : parallelUpdates)
+        sendUpdates(*updates);
+
+    UpdateDataMapType visibilityUpdates;
+    UpdateVisibility(visibilityUpdates);
 
     {
         std::unordered_map<Object*, PlayerSet> visibilityAdded;
-        std::swap(visibilityAdded, m_visibilityAdded);
+        {
+            std::lock_guard<std::mutex> guard(m_updateObjectLock);
+            visibilityAdded.swap(m_visibilityAdded);
+        }
+
         for (auto& visData : visibilityAdded)
-        {               
+        {
             for (Player* player : visData.second)
-                visData.first->BuildCreateDataForPlayer(player, update_players, false);
+                visData.first->BuildCreateDataForPlayer(player, visibilityUpdates, false);
 
             if (!visData.second.empty() && visData.first->IsUnit())
             {
                 for (Player* player : visData.second)
                 {
-                    std::vector<WorldPacket> auraPackets = Player::BuildAurasForTarget(*player, static_cast<Unit const&>(*(visData.first)));
-                    const auto& updateDataData = update_players.find(player); // always exist after previous loop
+                    std::vector<WorldPacket> auraPackets = Player::BuildAurasForTarget(*player, static_cast<Unit const&>(*visData.first));
+                    auto updateData = visibilityUpdates.find(player);
+                    if (updateData == visibilityUpdates.end())
+                        continue;
+
                     for (auto& auraPacket : auraPackets)
-                    {
-                        updateDataData->second.AddAfterCreatePacket(auraPacket);
-                    }
+                        updateData->second.AddAfterCreatePacket(auraPacket);
                 }
             }
 
@@ -2842,21 +2906,22 @@ void Map::SendObjectUpdates()
 
     {
         std::vector<std::pair<GuidSet, ObjectGuid>> removeObjects;
-        std::swap(removeObjects, m_objectsToClientRemove);
+        {
+            std::lock_guard<std::mutex> guard(m_updateObjectLock);
+            removeObjects.swap(m_objectsToClientRemove);
+        }
+
         for (auto& removeObj : removeObjects)
         {
             for (ObjectGuid clientImAt : removeObj.first)
             {
                 if (Player* player = GetPlayer(clientImAt))
-                    Object::BuildOutOfRangeDataForPlayer(player, update_players, removeObj.second);
+                    Object::BuildOutOfRangeDataForPlayer(player, visibilityUpdates, removeObj.second);
             }
         }
     }
 
-    for (auto& update_player : update_players)
-    {
-        update_player.second.SendData(*update_player.first->GetSession());
-    }
+    sendUpdates(visibilityUpdates);
 }
 
 Creature* Map::GetCreature(uint32 dbguid) const
@@ -2981,21 +3046,25 @@ void Map::RemoveStringIdObject(uint32 stringId, WorldObject* obj)
 
 void Map::AddUpdateRemoveObject(GuidSet& visible, ObjectGuid guid)
 {
+    std::lock_guard<std::mutex> guard(m_updateObjectLock);
     m_objectsToClientRemove.emplace_back(visible, guid);
 }
 
 void Map::AddUpdateRemoveObject(GuidSet&& visible, ObjectGuid guid)
 {
-    m_objectsToClientRemove.emplace_back(visible, guid);
+    std::lock_guard<std::mutex> guard(m_updateObjectLock);
+    m_objectsToClientRemove.emplace_back(std::move(visible), guid);
 }
 
 void Map::AddCreateAtClientObject(Player* player, Object* obj)
 {
+    std::lock_guard<std::mutex> guard(m_updateObjectLock);
     m_visibilityAdded[obj].insert(player);
 }
 
 void Map::AddCreateAtClientObjects(PlayerSet const& players, Object* obj)
 {
+    std::lock_guard<std::mutex> guard(m_updateObjectLock);
     m_visibilityAdded[obj].insert(players.begin(), players.end());
 }
 
