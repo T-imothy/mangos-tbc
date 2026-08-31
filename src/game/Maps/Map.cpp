@@ -40,10 +40,14 @@
 #include "Weather/Weather.h"
 #include "AI/ScriptDevAI/ScriptDevAIMgr.h"
 #include "BattleGround/BattleGroundMgr.h"
+#include "Util/Timer.h"
 
 #ifdef BUILD_METRICS
  #include "Metric/Metric.h"
 #endif
+
+#include <time.h>
+#include <cmath>
 
 #ifdef ENABLE_PLAYERBOTS
 #include "playerbot/playerbot.h"
@@ -752,6 +756,17 @@ void Map::Update(const uint32& t_diff)
     m_clientUpdateTimer += t_diff;
     if (IsUpdateObjectTick())
         ++m_clientUpdateTick;
+
+    const bool performanceLogging = sWorld.getConfig(CONFIG_BOOL_PERFORMANCE_LOG_ENABLED);
+    const uint32 performanceMapStart = WorldTimer::getMSTime();
+    uint32 performanceSessionElapsed = 0;
+    uint32 performancePlayerElapsed = 0;
+    uint32 performanceBotElapsed = 0;
+    uint32 performancePlayerCount = 0;
+    uint32 performanceBotCount = 0;
+    uint32 performanceFullBotUpdates = 0;
+    uint32 performanceMinimalBotUpdates = 0;
+
 #ifdef BUILD_METRICS
     metric::duration<std::chrono::milliseconds> meas("map.update", {
         { "map_id", std::to_string(i_id) },
@@ -789,6 +804,7 @@ void Map::Update(const uint32& t_diff)
 
     // the player iterator is stored in the map object
     // to make sure calls to Map::Remove don't invalidate it
+    const uint32 performanceSessionStart = WorldTimer::getMSTime();
     {
 #ifdef BUILD_METRICS
         uint32 updatedSessions = 0;
@@ -815,6 +831,9 @@ void Map::Update(const uint32& t_diff)
         sessions_meas.add_field("count", std::to_string(static_cast<int32>(updatedSessions)));
 #endif
     }
+    performanceSessionElapsed = WorldTimer::getMSTimeDiff(performanceSessionStart, WorldTimer::getMSTime());
+
+    const uint32 performancePlayerStart = WorldTimer::getMSTime();
 
 #ifdef ENABLE_PLAYERBOTS
     // Calculate the active zones every 10 seconds (An active zone is a zone where one or more real players are)
@@ -875,6 +894,7 @@ void Map::Update(const uint32& t_diff)
     }
 
     bool shouldUpdateBots = urand(0, (uint32)(botUpdateChance * 100)) < 100;
+    const uint32 backgroundBotCadence = std::max<uint32>(1, static_cast<uint32>(std::ceil(botUpdateChance)));
 #endif
 
     /// update players at tick
@@ -883,9 +903,19 @@ void Map::Update(const uint32& t_diff)
         Player* plr = m_mapRefIter->getSource();
         if (plr && plr->IsInWorld())
         {
+            ++performancePlayerCount;
 #ifdef ENABLE_PLAYERBOTS
+            const bool isPlayerbot = plr->GetPlayerbotAI() && !plr->GetPlayerbotAI()->IsRealPlayer();
+            if (isPlayerbot)
+                ++performanceBotCount;
+
             // Determine if the individual bot should update
             bool shouldUpdateBot = shouldUpdateBots;
+            if (isPlayerbot && sWorld.getConfig(CONFIG_BOOL_PLAYERBOT_STAGGER_BACKGROUND_UPDATES))
+            {
+                const uint32 loop = World::m_worldLoopCounter.load(std::memory_order_relaxed);
+                shouldUpdateBot = ((loop + plr->GetGUIDLow()) % backgroundBotCadence) == 0;
+            }
 
             // Real players should update always (it will update alt bots)
             if (!plr->GetPlayerbotAI() || plr->GetPlayerbotAI()->IsRealPlayer())
@@ -927,6 +957,8 @@ void Map::Update(const uint32& t_diff)
             plr->Update(t_diff);
 
 #ifdef ENABLE_PLAYERBOTS
+            const bool minimalBotUpdate = !sPlayerbotAIConfig.disableBotOptimizations && !shouldUpdateBot;
+            const uint32 performanceBotStart = performanceLogging && isPlayerbot ? WorldTimer::getMSTime() : 0;
             if (sPlayerbotAIConfig.disableBotOptimizations)
             {
                 plr->UpdateAI(t_diff, false);
@@ -934,6 +966,24 @@ void Map::Update(const uint32& t_diff)
             else
             {
                 plr->UpdateAI(t_diff, !shouldUpdateBot);
+            }
+
+            if (isPlayerbot)
+            {
+                const uint32 botElapsed = performanceLogging ? WorldTimer::getMSTimeDiff(performanceBotStart, WorldTimer::getMSTime()) : 0;
+                performanceBotElapsed += botElapsed;
+                if (minimalBotUpdate)
+                    ++performanceMinimalBotUpdates;
+                else
+                    ++performanceFullBotUpdates;
+
+                if (performanceLogging && botElapsed >= sWorld.getConfig(CONFIG_UINT32_PERFORMANCE_LOG_SLOW_BOT_MS))
+                {
+                    sLog.outPerformance("SLOW_BOT name=%s guid=%u map=%u instance=%u elapsed=%u ms mode=%s combat=%u has_real_master=%u",
+                        plr->GetName(), plr->GetGUIDLow(), GetId(), GetInstanceId(), botElapsed,
+                        minimalBotUpdate ? "minimal" : "full", plr->IsInCombat() ? 1 : 0,
+                        plr->GetPlayerbotAI()->HasRealPlayerMaster() ? 1 : 0);
+                }
             }
 #endif
         }
@@ -947,6 +997,8 @@ void Map::Update(const uint32& t_diff)
         sLog.outBasic("Map %u: Active Zone Players - %u of %u", GetId(), activePlayers, m_mapRefManager.getSize());
     }
 #endif
+
+    performancePlayerElapsed = WorldTimer::getMSTimeDiff(performancePlayerStart, WorldTimer::getMSTime());
 
     for (m_mapRefIter = m_mapRefManager.begin(); m_mapRefIter != m_mapRefManager.end(); ++m_mapRefIter)
     {
@@ -1127,6 +1179,20 @@ void Map::Update(const uint32& t_diff)
     }
 
     m_weatherSystem->UpdateWeathers(t_diff);
+
+    if (performanceLogging)
+    {
+        const uint32 performanceTotalElapsed = WorldTimer::getMSTimeDiff(performanceMapStart, WorldTimer::getMSTime());
+        const uint32 slowMapThreshold = sWorld.getConfig(CONFIG_UINT32_PERFORMANCE_LOG_SLOW_MAP_MS);
+        const uint32 slowBotThreshold = sWorld.getConfig(CONFIG_UINT32_PERFORMANCE_LOG_SLOW_BOT_MS);
+        if (performanceTotalElapsed >= slowMapThreshold || performanceBotElapsed >= slowBotThreshold)
+        {
+            sLog.outPerformance("SLOW_MAP map=%u instance=%u name=%s total=%u ms sessions=%u ms players_phase=%u ms bot_ai=%u ms players=%u bots=%u bot_full=%u bot_minimal=%u objects=%llu input_diff=%u ms",
+                GetId(), GetInstanceId(), GetMapName(), performanceTotalElapsed, performanceSessionElapsed,
+                performancePlayerElapsed, performanceBotElapsed, performancePlayerCount, performanceBotCount,
+                performanceFullBotUpdates, performanceMinimalBotUpdates, static_cast<unsigned long long>(count), t_diff);
+        }
+    }
 }
 
 uint64 Map::PerformObjectUpdate(uint32 t_diff, WorldObjectUnSet& objToUpdate)
