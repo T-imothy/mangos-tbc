@@ -132,7 +132,7 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode(WorldPacket& recv_data)
        )
     {
         _player->GetPlayerMenu()->CloseGossip();
-        _player->ClearDividerGuid();
+        _player->ClearQuestShareInfo();
         return;
     }
 
@@ -143,14 +143,29 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode(WorldPacket& recv_data)
         if (!GetPlayer()->CanTakeQuest(qInfo, true))
         {
             _player->GetPlayerMenu()->CloseGossip();
-            _player->ClearDividerGuid();
+            _player->ClearQuestShareInfo();
             return;
         }
 
-        if (Player* pPlayer = ObjectAccessor::FindPlayer(_player->GetDividerGuid()))
+        if (_player->GetDividerGuid())
         {
-            pPlayer->SendPushToPartyResponse(_player, QUEST_PARTY_MSG_ACCEPT_QUEST);
-            _player->ClearDividerGuid();
+            if (_player->GetDividerQuestId() != quest)
+                _player->ClearQuestShareInfo();
+            else if (Player* pPlayer = ObjectAccessor::FindPlayer(_player->GetDividerGuid()))
+            {
+                if (!_player->IsInMap(pPlayer) || _player->GetDistance(pPlayer) > 10.0f)
+                {
+                    pPlayer->SendPushToPartyResponse(_player, QUEST_PARTY_MSG_TOO_FAR);
+                    _player->GetPlayerMenu()->CloseGossip();
+                    _player->ClearQuestShareInfo();
+                    return;
+                }
+
+                pPlayer->SendPushToPartyResponse(_player, QUEST_PARTY_MSG_ACCEPT_QUEST);
+                _player->ClearQuestShareInfo();
+            }
+            else
+                _player->ClearQuestShareInfo();
         }
 
         if (_player->CanAddQuest(qInfo, true))
@@ -170,7 +185,7 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode(WorldPacket& recv_data)
 
                         if (pPlayer->CanTakeQuest(qInfo, true))
                         {
-                            pPlayer->SetDividerGuid(_player->GetObjectGuid());
+                            pPlayer->SetQuestShareInfo(_player->GetObjectGuid(), qInfo->GetQuestId());
 
                             // need confirmation that any gossip window will close
                             pPlayer->GetPlayerMenu()->CloseGossip();
@@ -479,10 +494,26 @@ void WorldSession::HandleQuestConfirmAccept(WorldPacket& recv_data)
         if (!pQuest->HasQuestFlag(QUEST_FLAGS_PARTY_ACCEPT))
             return;
 
+        if (!_player->GetDividerGuid() || _player->GetDividerQuestId() != quest)
+        {
+            _player->ClearQuestShareInfo();
+            return;
+        }
+
         Player* pOriginalPlayer = ObjectAccessor::FindPlayer(_player->GetDividerGuid());
 
         if (!pOriginalPlayer)
+        {
+            _player->ClearQuestShareInfo();
             return;
+        }
+
+        if (!_player->IsInMap(pOriginalPlayer) || _player->GetDistance(pOriginalPlayer) > 10.0f)
+        {
+            pOriginalPlayer->SendPushToPartyResponse(_player, QUEST_PARTY_MSG_TOO_FAR);
+            _player->ClearQuestShareInfo();
+            return;
+        }
 
         if (pQuest->IsAllowedInRaid())
         {
@@ -498,7 +529,7 @@ void WorldSession::HandleQuestConfirmAccept(WorldPacket& recv_data)
         if (_player->CanAddQuest(pQuest, true))
             _player->AddQuest(pQuest, nullptr);                // nullptr, this prevent DB script from duplicate running
 
-        _player->ClearDividerGuid();
+        _player->ClearQuestShareInfo();
     }
 }
 
@@ -598,7 +629,7 @@ void WorldSession::HandlePushQuestToParty(WorldPacket& recvPacket)
 #ifndef BUILD_DEPRECATED_PLAYERBOT
                 pPlayer->GetPlayerMenu()->SendQuestGiverQuestDetails(pQuest, _player->GetObjectGuid(), true);
 #endif
-                pPlayer->SetDividerGuid(_player->GetObjectGuid());
+                pPlayer->SetQuestShareInfo(_player->GetObjectGuid(), questId);
 
 #ifdef BUILD_DEPRECATED_PLAYERBOT
                 if (pPlayer->GetPlayerbotAI())
@@ -606,7 +637,7 @@ void WorldSession::HandlePushQuestToParty(WorldPacket& recvPacket)
                 else
                 {
                     pPlayer->GetPlayerMenu()->SendQuestGiverQuestDetails(pQuest, _player->GetObjectGuid(), true);
-                    pPlayer->SetDividerGuid(_player->GetObjectGuid());
+                    pPlayer->SetQuestShareInfo(_player->GetObjectGuid(), questId);
                 }
 #endif
             }
@@ -622,14 +653,18 @@ void WorldSession::HandleQuestPushResult(WorldPacket& recvPacket)
 
     DEBUG_LOG("WORLD: Received opcode MSG_QUEST_PUSH_RESULT");
 
+    if (!_player->GetDividerGuid())
+        return;
+
     if (Player* pPlayer = ObjectAccessor::FindPlayer(_player->GetDividerGuid()))
     {
-        WorldPacket data(MSG_QUEST_PUSH_RESULT, (8 + 1));
-        data << ObjectGuid(guid);
-        data << uint8(msg);                             // valid values: 0-8
+        WorldPacket data(MSG_QUEST_PUSH_RESULT, 8 + 1);
+        data << _player->GetObjectGuid();
+        data << uint8(msg);
         pPlayer->GetSession()->SendPacket(data);
-        _player->ClearDividerGuid();
     }
+
+    _player->ClearQuestShareInfo();
 }
 
 /**

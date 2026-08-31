@@ -176,6 +176,7 @@ class Map : public GridRefManager<NGridType>
         void ExecuteMapWorkerArea(uint32 areaId, std::function<void(Player*)> const& worker);
 
         float GetVisibilityDistance() const { return m_VisibleDistance; }
+        void SetVisibilityDistanceScale(float scale);
         // function for setting up visibility distance for maps on per-type/per-Id basis
         virtual void InitVisibilityDistance();
         void VisiblityDistanceChanged(WorldObject* obj, float oldVisibility, VisibilityDistanceType newVisiblity);
@@ -510,6 +511,7 @@ class Map : public GridRefManager<NGridType>
         uint32 m_clientUpdateTimer;
         uint32 m_clientUpdateTick;
         float m_VisibleDistance;
+        float m_BaseVisibleDistance;
         MapPersistentState* m_persistentState;
 
         MapRefManager m_mapRefManager;

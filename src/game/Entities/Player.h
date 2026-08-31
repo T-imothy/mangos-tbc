@@ -1363,8 +1363,13 @@ class Player : public Unit
         void SendQuestGiverStatusMultiple() const;
 
         ObjectGuid GetDividerGuid() const { return m_dividerGuid; }
+        uint32 GetDividerQuestId() const { return m_dividerQuestId; }
+        void SetQuestShareInfo(ObjectGuid guid, uint32 questId) { m_dividerGuid = guid; m_dividerQuestId = questId; }
+        void ClearQuestShareInfo() { m_dividerGuid.Clear(); m_dividerQuestId = 0; }
+
+        // Compatibility wrappers for the deprecated Playerbot implementation.
         void SetDividerGuid(ObjectGuid guid) { m_dividerGuid = guid; }
-        void ClearDividerGuid() { m_dividerGuid.Clear(); }
+        void ClearDividerGuid() { ClearQuestShareInfo(); }
 
         uint32 GetInGameTime() const { return m_ingametime; }
 
@@ -2337,6 +2342,7 @@ class Player : public Unit
         QuestSet m_monthlyquests;
 
         ObjectGuid m_dividerGuid;
+        uint32 m_dividerQuestId = 0;
         uint32 m_ingametime;
 
         /*********************************************************/
