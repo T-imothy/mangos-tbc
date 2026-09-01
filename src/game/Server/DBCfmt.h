@@ -113,7 +113,11 @@ const char TransportAnimationfmt[] = "diifffx";
 const char TotemCategoryEntryfmt[] = "nxxxxxxxxxxxxxxxxxii";
 const char WMOAreaTableEntryfmt[] = "niiixxxxxiissssssssssssssssx";
 const char WorldMapAreaEntryfmt[] = "xinxffffi";
-// const char WorldMapOverlayEntryfmt[]="nxiiiixxxxxxxxxxx";
+#ifdef ENABLE_MODULES
+const char WorldMapOverlayEntryfmt[] = "nxiiiixxxxxxxxxxx";
+#else
+// const char WorldMapOverlayEntryfmt[] = "nxiiiixxxxxxxxxxx";
+#endif
 const char WorldSafeLocsEntryfmt[] = "nifffxxxxxxxxxxxxxxxxx";
 
 #endif
