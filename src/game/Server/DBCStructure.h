@@ -1333,7 +1333,7 @@ struct WorldMapAreaEntry
     int32   virtual_map_id;                                 // 8        m_displayMapID -1 (map_id have correct map) other: virtual map where zone show (map_id - where zone in fact internally)
 };
 
-/* not used in 2.4.3 code
+#ifdef ENABLE_MODULES
 #define MAX_WORLD_MAP_OVERLAY_AREA_IDX 4
 
 struct WorldMapOverlayEntry
@@ -1353,7 +1353,17 @@ struct WorldMapOverlayEntry
                                                             // 15       m_hitRectBottom
                                                             // 16       m_hitRectRight
 };
+#else
+/* not used in 2.4.3 code
+#define MAX_WORLD_MAP_OVERLAY_AREA_IDX 4
+
+struct WorldMapOverlayEntry
+{
+    uint32    ID;
+    uint32    areatableID[MAX_WORLD_MAP_OVERLAY_AREA_IDX];
+};
 */
+#endif
 
 /* Structure WorldSafeLocsEntry is no longer loaded from DBC but from DB instead
 struct WorldSafeLocsEntry
