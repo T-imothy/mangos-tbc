@@ -3879,6 +3879,7 @@ void Spell::SendSpellCooldown()
         {
             WorldPacket data(SMSG_SPELL_COOLDOWN, 8 + 1 + 8);
             data << m_trueCaster->GetObjectGuid();
+            data << uint8(SPELL_COOLDOWN_FLAG_NONE);
             data << uint32(m_spellInfo->Id);
             data << uint32(duration);
             static_cast<Player*>(m_trueCaster)->GetSession()->SendPacket(data);
