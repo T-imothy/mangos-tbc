@@ -4520,6 +4520,7 @@ void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRe
             CharacterDatabase.PExecute("DELETE FROM character_social WHERE guid = '%u' OR friend='%u'", lowguid, lowguid);
             CharacterDatabase.PExecute("DELETE FROM mail WHERE receiver = '%u'", lowguid);
             CharacterDatabase.PExecute("DELETE FROM mail_items WHERE receiver = '%u'", lowguid);
+            CharacterDatabase.PExecute("DELETE FROM mantech_character_grants WHERE guid = '%u'", lowguid);
             CharacterDatabase.PExecute("DELETE FROM character_pet WHERE owner = '%u'", lowguid);
             CharacterDatabase.PExecute("DELETE FROM character_pet_declinedname WHERE owner = '%u'", lowguid);
             CharacterDatabase.PExecute("DELETE FROM guild_eventlog WHERE PlayerGuid1 = '%u' OR PlayerGuid2 = '%u'", lowguid, lowguid);
