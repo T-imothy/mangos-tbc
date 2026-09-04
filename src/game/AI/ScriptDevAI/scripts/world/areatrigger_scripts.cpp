@@ -403,31 +403,6 @@ bool AreaTrigger_at_twilight_grove(Player* player, AreaTriggerEntry const* /*pAt
 }
 
 /*######
-## at_hive_tower
-######*/
-
-bool AreaTrigger_at_hive_tower(Player* player, AreaTriggerEntry const* /*pAt*/)
-{
-    ScriptedMap* scriptedMap = (ScriptedMap*)player->GetInstanceData();
-    if (!scriptedMap)
-        return false;
-
-    if (scriptedMap->GetData(TYPE_HIVE) != NOT_STARTED) // Only summon more Hive'Ashi Drones if the 5 minutes timer is elapsed
-        return false;
-
-    if (player->IsAlive() && !player->IsGameMaster())
-    {
-        // spawn three Hive'Ashi Drones for 5 minutes (timer is guesswork)
-        for (uint8 i = POS_IDX_HIVE_DRONES_START; i <= POS_IDX_HIVE_DRONES_STOP; ++i)
-            player->SummonCreature(NPC_HIVE_ASHI_DRONES, aSpawnLocations[i][0], aSpawnLocations[i][1], aSpawnLocations[i][2], aSpawnLocations[i][3], TEMPSPAWN_TIMED_OR_DEAD_DESPAWN, 5 * MINUTE * IN_MILLISECONDS);
-        scriptedMap->SetData(TYPE_HIVE, IN_PROGRESS);   // Notify the map script to start the timer
-        return true;
-    }
-
-    return false;
-}
-
-/*######
 ## at_wondervolt
 ######*/
 
@@ -537,11 +512,6 @@ void AddSC_areatrigger_scripts()
     pNewScript = new Script;
     pNewScript->Name = "at_twilight_grove";
     pNewScript->pAreaTrigger = &AreaTrigger_at_twilight_grove;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "at_hive_tower";
-    pNewScript->pAreaTrigger = &AreaTrigger_at_hive_tower;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;
