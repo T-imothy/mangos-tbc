@@ -28,8 +28,28 @@ item_gor_dreks_ointment(i30175)     Protecting Our Own(q10488)
 EndContentData */
 
 #include "AI/ScriptDevAI/include/sc_common.h"
+#include "Entities/GameObject.h"
 #include "Spells/Spell.h"
 #include "Spells/Scripts/SpellScript.h"
+
+namespace
+{
+    enum ManTechPortableUtility
+    {
+        ITEM_MANTECH_PORTABLE_MAILBOX     = 90000,
+        PORTABLE_MAILBOX_LIFETIME_SECONDS = 600,
+    };
+
+    struct ManTechPortableMailboxSpell : public SpellScript
+    {
+        void OnSummon(Spell* spell, GameObject* summon) const override
+        {
+            Item* castItem = spell->GetCastItem();
+            if (castItem && castItem->GetEntry() == ITEM_MANTECH_PORTABLE_MAILBOX)
+                summon->SetRespawnTime(PORTABLE_MAILBOX_LIFETIME_SECONDS);
+        }
+    };
+}
 
 
 /*#####
@@ -625,4 +645,5 @@ void AddSC_item_scripts()
     RegisterSpellScript<Area52Transporter>("spell_area52_transporter");
     RegisterSpellScript<LinkensBoomerang>("spell_linkens_boomerang");
     RegisterSpellScript<ShattrathFlasks>("spell_shattrath_flasks");
+    RegisterSpellScript<ManTechPortableMailboxSpell>("spell_mantech_portable_mailbox");
 }
