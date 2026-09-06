@@ -62,7 +62,7 @@ struct boss_ambassador_hellmawAI : public CombatAI
     {
         if (eventType == AI_EVENT_CUSTOM_A) // all channelers killed
             Unbanish();
-        else if (AI_EVENT_CUSTOM_B) // respawn
+        else if (eventType == AI_EVENT_CUSTOM_B) // respawn
             ResetTimer(AMBASSADOR_HELLMAW_UNBANISH_CHECK, 2000);
     }
 
