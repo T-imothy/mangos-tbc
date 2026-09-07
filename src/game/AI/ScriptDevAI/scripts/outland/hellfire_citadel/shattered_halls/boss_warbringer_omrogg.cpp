@@ -337,7 +337,8 @@ struct Beatdown : public SpellScript
 {
     void OnCast(Spell* spell) const override
     {
-        spell->SetScriptValue(urand(0, spell->GetTargetList().size() - 1));
+        if (!spell->GetTargetList().empty())
+            spell->SetScriptValue(urand(0, spell->GetTargetList().size() - 1));
     }
 
     void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
@@ -347,8 +348,11 @@ struct Beatdown : public SpellScript
             return;
 
         Unit* target = spell->GetUnitTarget();
+        if (!target)
+            return;
         auto itr = std::find_if(spell->GetTargetList().begin(), spell->GetTargetList().end(), [target](Spell::TargetInfo const& info) { return info.targetGUID == target->GetObjectGuid(); });
-        if (itr == spell->GetTargetList().end())
+        if (itr == spell->GetTargetList().end() ||
+            uint32(std::distance(spell->GetTargetList().begin(), itr)) != spell->GetScriptValue())
             return;
 
         caster->getThreatManager().modifyAllThreatPercent(-100);

@@ -459,7 +459,7 @@ struct boss_aranAI : public CombatAI
 
                 if (m_choiceVector.size() != 0)
                 {
-                    uint32 currentSpellIndex = urand(0, m_choiceVector.size() - 1);
+                    uint32 currentSpellIndex = m_choiceVector[urand(0, m_choiceVector.size() - 1)];
                     uint32 currentSpellId = GetNormalSpellId(currentSpellIndex);
                     if (DoCastSpellIfCan(target, currentSpellId) == CAST_OK)
                         ResetCombatAction(action, 2000);

@@ -133,21 +133,24 @@ struct boss_malchezaarAI : public CombatAI
         m_creature->GetMap()->ForceLoadGrid(-10833.1, -2151.58);
         m_creature->GetMap()->ForceLoadGrid(-10893.51, -2081.342);
         GetCreatureListWithEntryInGrid(creatureList,m_creature, NPC_INFERNAL_RELAY,400.0f);*/
+        m_uiRelayGuidClose.Clear();
+        m_uiRelayGuidFar.Clear();
         float z = 0;
         if (instance_karazhan* kara = dynamic_cast<instance_karazhan*>(m_instance))
         {
             for (auto& relayGuid : kara->m_vInfernalRelays)
             {
-                if (z == 0)
+                Creature* relay = m_creature->GetMap()->GetCreature(relayGuid);
+                if (!relay)
+                    continue;
+                if (m_uiRelayGuidClose.IsEmpty())
                 {
-                    Creature* relay = m_creature->GetMap()->GetCreature(relayGuid);
                     m_uiRelayGuidClose = relayGuid;
                     m_uiRelayGuidFar = relayGuid;
                     z = relay->GetPositionZ();
                 }
                 else
                 {
-                    Creature* relay = m_creature->GetMap()->GetCreature(relayGuid);
                     if (relay->GetPositionZ() < z)
                     {
                         m_uiRelayGuidClose = relayGuid;
@@ -158,6 +161,13 @@ struct boss_malchezaarAI : public CombatAI
                     }
                 }
             }
+        }
+        // Both infernal relays are required; do not run an incomplete encounter.
+        if (m_uiRelayGuidClose.IsEmpty() || m_uiRelayGuidFar.IsEmpty() || m_uiRelayGuidClose == m_uiRelayGuidFar)
+        {
+            script_error_log("Karazhan: missing infernal relays for Prince Malchezaar.");
+            EnterEvadeMode();
+            return;
         }
         if (m_instance)
             m_instance->SetData(TYPE_MALCHEZZAR, IN_PROGRESS);
