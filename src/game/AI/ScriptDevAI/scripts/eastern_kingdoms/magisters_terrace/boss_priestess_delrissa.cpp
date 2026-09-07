@@ -160,12 +160,14 @@ struct boss_priestess_delrissaAI : public priestess_commonAI
 
     uint8 m_playersKilled;
     uint32 m_summonsKilled;
+    GuidList m_deadCompanionGuids;
 
     void Reset() override
     {
         CombatAI::Reset();
         m_playersKilled = 0;
         m_summonsKilled = 0;
+        m_deadCompanionGuids.clear();
 
         DoInitializeCompanions();
 
@@ -249,8 +251,17 @@ struct boss_priestess_delrissaAI : public priestess_commonAI
             m_playersKilled = 0;
     }
 
-    void SummonedCreatureJustDied(Creature* /*summoned*/) override
+    void SummonedCreatureJustDied(Creature* summoned) override
     {
+        if (!summoned || summoned->GetSpawnerGuid() != m_creature->GetObjectGuid() ||
+            m_summonsKilled >= MAX_DELRISSA_ADDS || m_vuiLackeyEnties.size() < MAX_DELRISSA_ADDS ||
+            std::find(m_vuiLackeyEnties.begin(), m_vuiLackeyEnties.begin() + MAX_DELRISSA_ADDS, summoned->GetEntry()) ==
+                m_vuiLackeyEnties.begin() + MAX_DELRISSA_ADDS ||
+            std::find(m_deadCompanionGuids.begin(), m_deadCompanionGuids.end(), summoned->GetObjectGuid()) != m_deadCompanionGuids.end())
+            return;
+        // Only the four selected companions advance completion or index the
+        // four death lines. Repeated/foreign callbacks are not another death.
+        m_deadCompanionGuids.push_back(summoned->GetObjectGuid());
         ++m_summonsKilled;
         if (!m_creature->HasAura(SPELL_PERMANENT_FEIGN_DEATH))
             DoScriptText(aDelrissaAddDeath[m_summonsKilled - 1], m_creature);

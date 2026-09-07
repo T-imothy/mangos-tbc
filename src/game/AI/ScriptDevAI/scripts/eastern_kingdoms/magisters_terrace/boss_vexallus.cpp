@@ -94,6 +94,7 @@ struct boss_vexallusAI : public CombatAI
     bool m_isRegularMode;
 
     float m_intervalHealthAmount;
+    uint8 m_energySummons = 0;
 
     GuidVector m_sparks;
 
@@ -103,6 +104,7 @@ struct boss_vexallusAI : public CombatAI
 
         SetCombatMovement(true);
         m_intervalHealthAmount = 85;
+        m_energySummons = 0;
 
         DespawnGuids(m_sparks);
     }
@@ -179,29 +181,42 @@ struct boss_vexallusAI : public CombatAI
                 // used for check, when Vexallus cast adds 85%, 70%, 55%, 40%, 25%
                 if (m_creature->GetHealthPercent() <= m_intervalHealthAmount)
                 {
+                    // A failed cast must not consume this health threshold.
+                    // Keep successful heroic halves so a retry cannot double
+                    // summon or shrink the boss a second time.
+                    if (m_isRegularMode)
+                    {
+                        if (DoCastSpellIfCan(nullptr, SPELL_SUMMON_PURE_ENERGY) != CAST_OK)
+                            return;
+                    }
+                    else
+                    {
+                        if (!(m_energySummons & 1) && DoCastSpellIfCan(nullptr, SPELL_SUMMON_PURE_ENERGY1_H, CAST_TRIGGERED) == CAST_OK)
+                            m_energySummons |= 1;
+                        if (!(m_energySummons & 2) && DoCastSpellIfCan(nullptr, SPELL_SUMMON_PURE_ENERGY2_H, CAST_TRIGGERED) == CAST_OK)
+                            m_energySummons |= 2;
+                        if (m_energySummons != 3)
+                            return;
+                    }
+                    m_energySummons = 0;
                     DoScriptText(SAY_ENERGY, m_creature);
                     DoScriptText(EMOTE_DISCHARGE_ENERGY, m_creature);
                     m_intervalHealthAmount -= 15.0f;
                     if (m_intervalHealthAmount == 10.f)
                         SetActionReadyStatus(action, false);
 
-                    if (m_isRegularMode)
-                        DoCastSpellIfCan(nullptr, SPELL_SUMMON_PURE_ENERGY);
-                    else
-                    {
-                        DoCastSpellIfCan(nullptr, SPELL_SUMMON_PURE_ENERGY1_H, CAST_TRIGGERED);
-                        DoCastSpellIfCan(nullptr, SPELL_SUMMON_PURE_ENERGY2_H, CAST_TRIGGERED);
-                    }
                 }
                 return;
             }
             case VEXALLUS_OVERLOAD:
                 if (m_creature->GetHealthPercent() > 20.f)
                     return;
-                DoCastSpellIfCan(nullptr, SPELL_OVERLOAD);
-                SetActionReadyStatus(action, false);
-                DoScriptText(SAY_OVERLOAD, m_creature);
-                DoScriptText(EMOTE_OVERLOAD, m_creature);
+                if (DoCastSpellIfCan(nullptr, SPELL_OVERLOAD) == CAST_OK)
+                {
+                    SetActionReadyStatus(action, false);
+                    DoScriptText(SAY_OVERLOAD, m_creature);
+                    DoScriptText(EMOTE_OVERLOAD, m_creature);
+                }
                 break;
         }
     }

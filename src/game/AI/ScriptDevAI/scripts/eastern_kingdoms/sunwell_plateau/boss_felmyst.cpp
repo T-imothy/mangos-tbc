@@ -404,9 +404,13 @@ struct boss_felmystAI : public CombatAI
                 m_creature->SetHover(false);
                 m_uiSubPhase = SUBPHASE_VAPOR;
             }
-            DoCastSpellIfCan(nullptr, SPELL_SUMMON_VAPOR);
-            ++m_uiDemonicVaporCount;
-            ResetTimer(FELMYST_DEMONIC_VAPOR, 11000);
+            if (DoCastSpellIfCan(nullptr, SPELL_SUMMON_VAPOR) == CAST_OK)
+            {
+                ++m_uiDemonicVaporCount;
+                ResetTimer(FELMYST_DEMONIC_VAPOR, 11000);
+            }
+            else
+                ResetTimer(FELMYST_DEMONIC_VAPOR, 1000);
         }
     }
 
