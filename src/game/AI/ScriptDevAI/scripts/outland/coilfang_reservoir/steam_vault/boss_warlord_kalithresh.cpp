@@ -151,22 +151,21 @@ struct boss_warlord_kalithreshAI : public CombatAI
     {
         if (action == WARLORD_KALITHRESH_ACTION_WARLORDS_RAGE)
         {
-            DoBroadcastText(SAY_REGEN, m_creature);
-            SetCombatScriptStatus(true);
-            SetCombatMovement(false);
-            SetMeleeEnabled(false);
             // Move to closest distiller
             if (Creature* distiller = GetClosestCreatureWithEntry(m_creature, NPC_NAGA_DISTILLER, 100.0f))
             {
+                DoBroadcastText(SAY_REGEN, m_creature);
+                SetCombatScriptStatus(true);
+                SetCombatMovement(false);
+                SetMeleeEnabled(false);
                 float fX, fY, fZ;
                 distiller->GetContactPoint(m_creature, fX, fY, fZ, INTERACTION_DISTANCE);
                 m_creature->SetWalk(false, true); // Prevent him from slowing down while meleehit/casted upon while starting to move
                 m_creature->GetMotionMaster()->MovePoint(POINT_MOVE_DISTILLER, fX, fY, fZ);
                 m_distillerGuid = distiller->GetObjectGuid();
 
-                ResetCombatAction(action, GetSubsequentActionTimer(action));
-                return;
             }
+            ResetCombatAction(action, GetSubsequentActionTimer(action));
         }
     }
 };
