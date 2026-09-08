@@ -103,7 +103,8 @@ struct boss_harbinger_skyrissAI : public CombatAI
             case SKYRISS_66:
                 if (m_creature->GetHealthPercent() <= 66.f)
                 {
-                    DoCastSpellIfCan(nullptr, SPELL_66_ILLUSION);
+                    if (DoCastSpellIfCan(nullptr, SPELL_66_ILLUSION) != CAST_OK)
+                        return;
                     DoCastSpellIfCan(nullptr, SPELL_BLINK_VISUAL);
                     DoBroadcastText(SAY_IMAGE, m_creature);
                     DisableCombatAction(action);
@@ -112,7 +113,8 @@ struct boss_harbinger_skyrissAI : public CombatAI
             case SKYRISS_33:
                 if (m_creature->GetHealthPercent() <= 33.f)
                 {
-                    DoCastSpellIfCan(nullptr, SPELL_33_ILLUSION);
+                    if (DoCastSpellIfCan(nullptr, SPELL_33_ILLUSION) != CAST_OK)
+                        return;
                     DoCastSpellIfCan(nullptr, SPELL_BLINK_VISUAL);
                     DoBroadcastText(SAY_IMAGE, m_creature);
                     DisableCombatAction(action);

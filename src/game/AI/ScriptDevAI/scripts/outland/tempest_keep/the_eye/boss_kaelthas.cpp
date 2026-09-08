@@ -259,6 +259,7 @@ enum KaelThasActions
     KAEL_WEAPON_ATTACK,
     KAEL_ACTION_GRAVITY_LAPSE_END,
     KAEL_RESPAWN_ADVISORS,
+    KAEL_WEAPON_SUMMON_RETRY,
 };
 
 struct boss_kaelthasAI : public CombatAI
@@ -273,6 +274,7 @@ struct boss_kaelthasAI : public CombatAI
 #else
         AddCustomAction(KAEL_PHASE_ONE, 23000u, [&]() { HandlePhaseOne(); }, TIMER_COMBAT_COMBAT);
 #endif
+        AddCustomAction(KAEL_WEAPON_SUMMON_RETRY, true, [&]() { HandleWeaponSummons(); }, TIMER_COMBAT_COMBAT);
         AddCustomAction(KAEL_WEAPON_ATTACK, true, [&]() { HandleWeaponAttack(); }, TIMER_COMBAT_COMBAT);
         AddCustomAction(KAEL_PHASE_TWO, true, [&]() { HandlePhaseTwoEnd(); }, TIMER_COMBAT_COMBAT);
         AddCustomAction(KAEL_PHASE_THREE, true, [&]() { HandlePhaseThree(); }, TIMER_COMBAT_COMBAT);
@@ -308,6 +310,7 @@ struct boss_kaelthasAI : public CombatAI
     GuidSet m_charmTargets;
 
     uint32 m_advisorsAlive;
+    uint32 m_weaponSummons;
 
     bool m_actionReadyStatus[KAEL_ACTION_MAX];
 
@@ -330,6 +333,8 @@ struct boss_kaelthasAI : public CombatAI
         m_phaseTransitionStage = 0;
 
         m_advisorsAlive = 4;
+        m_weaponSummons = 0;
+        m_pyroblastCounter = 0;
 
         SetRangedMode(true, 35.f, TYPE_PROXIMITY);
 
@@ -471,21 +476,38 @@ struct boss_kaelthasAI : public CombatAI
 
     void SpellHit(Unit* /*caster*/, const SpellEntry* spellInfo) override
     {
-        // Handle summon weapons event
-        if (spellInfo->Id == SPELL_SUMMON_WEAPONS)
+        if (spellInfo->Id == SPELL_SUMMON_WEAPONS && m_uiPhase == PHASE_1_ADVISOR && m_uiPhaseSubphase == 8)
         {
-            for (unsigned int i : m_spellSummonWeapon)
-                DoCastSpellIfCan(m_creature, i, CAST_TRIGGERED);
-
-            m_uiPhase      = PHASE_2_WEAPON;
-            uint32 timer = 120000;
-#ifdef FAST_TIMERS
-            timer = 10000;
-#elif defined(PRENERF_2_0_3)
-            timer = 90000; // very early pre 2.1 - 90s (90000), later 120s (120000);
-#endif
-            ResetTimer(KAEL_PHASE_TWO, timer);
+            m_uiPhase = PHASE_2_WEAPON;
+            ++m_uiPhaseSubphase;
+            HandleWeaponSummons();
         }
+    }
+
+    void HandleWeaponSummons()
+    {
+        if (m_uiPhase != PHASE_2_WEAPON || !m_creature->IsAlive() || !m_creature->IsInCombat() || m_weaponSummons == (1u << MAX_WEAPONS) - 1)
+            return;
+
+        for (uint32 i = 0; i < MAX_WEAPONS; ++i)
+        {
+            if (m_weaponSummons & (1u << i))
+                continue;
+            if (DoCastSpellIfCan(m_creature, m_spellSummonWeapon[i], CAST_TRIGGERED) != CAST_OK)
+            {
+                ResetTimer(KAEL_WEAPON_SUMMON_RETRY, 500);
+                return;
+            }
+            m_weaponSummons |= 1u << i;
+        }
+
+        uint32 timer = 120000;
+#ifdef FAST_TIMERS
+        timer = 10000;
+#elif defined(PRENERF_2_0_3)
+        timer = 90000;
+#endif
+        ResetTimer(KAEL_PHASE_TWO, timer);
     }
 
     void SpellHitTarget(Unit* target, const SpellEntry* spellInfo) override
@@ -603,6 +625,7 @@ struct boss_kaelthasAI : public CombatAI
             case SPELL_SHOCK_BARRIER:
                 if (m_uiPhase != PHASE_4_SOLO)
                     break;
+                m_pyroblastCounter = 0;
                 ResetCombatAction(KAEL_ACTION_PYROBLAST_SEQUENCE, 1);
                 break;
             case SPELL_MIND_CONTROL:
@@ -652,6 +675,11 @@ struct boss_kaelthasAI : public CombatAI
             }
             case KAEL_ACTION_PYROBLAST_SEQUENCE:
             {
+                if (m_uiPhase != PHASE_4_SOLO)
+                {
+                    DisableCombatAction(action);
+                    return;
+                }
                 if (DoCastSpellIfCan(nullptr, SPELL_PYROBLAST) == CAST_OK)
                 {
                     DoBroadcastText(EMOTE_PYROBLAST, m_creature);
@@ -668,7 +696,7 @@ struct boss_kaelthasAI : public CombatAI
 
     void HandlePhaseOne()
     {
-        if (!m_instance)
+        if (!m_instance || m_uiPhase != PHASE_1_ADVISOR)
             return;
 
         uint32 timer = 0;
@@ -739,9 +767,17 @@ struct boss_kaelthasAI : public CombatAI
                 }
                 break;
             case 8:
+                if (m_uiPhase != PHASE_1_ADVISOR)
+                    return;
                 if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_WEAPONS) == CAST_OK)
+                {
                     DoBroadcastText(SAY_PHASE2_WEAPON, m_creature);
-                break;
+                    // SpellHit advances the phase when the three-second cast finishes.
+                    ResetTimer(KAEL_PHASE_ONE, 4000);
+                }
+                else
+                    ResetTimer(KAEL_PHASE_ONE, 500);
+                return;
         }
 
         ++m_uiPhaseSubphase;

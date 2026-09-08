@@ -533,7 +533,7 @@ enum KiljaedenActions
 struct boss_kiljaedenAI : public CombatAI, private DialogueHelper
 {
     boss_kiljaedenAI(Creature* creature) : CombatAI(creature, KILJAEDEN_ACTION_MAX),
-        DialogueHelper(aPhaseDialogue), m_instance(static_cast<instance_sunwell_plateau*>(creature->GetInstanceData())), m_uiMaxShieldOrbs(3), m_freeShieldOrbs(5)
+        DialogueHelper(aPhaseDialogue), m_instance(static_cast<instance_sunwell_plateau*>(creature->GetInstanceData())), m_uiMaxShieldOrbs(3), m_freeShieldOrbs(3)
     {
         InitializeDialogueHelper(m_instance);
         AddCombatAction(KILJAEDEN_ENRAGE, uint32(15 * MINUTE * IN_MILLISECONDS));
@@ -587,7 +587,7 @@ struct boss_kiljaedenAI : public CombatAI, private DialogueHelper
         SetMeleeEnabled(false);
 
         DespawnGuids(m_freeShieldOrbs);
-        m_freeShieldOrbs.resize(5);
+        m_freeShieldOrbs.resize(3);
     }
 
     void JustRespawned() override
@@ -658,11 +658,17 @@ struct boss_kiljaedenAI : public CombatAI, private DialogueHelper
             // Start the movement of the shadow orb - use db paths
 
             uint32 i = GetFirstFreeShieldOrbIndex();
+            if (i >= m_freeShieldOrbs.size())
+            {
+                summoned->ForcedDespawn();
+                return;
+            }
 
             // Move to new position
             summoned->GetMotionMaster()->Clear(false, true);
             summoned->GetMotionMaster()->MovePath(i + 1, PATH_NO_PATH, FORCED_MOVEMENT_NONE, true, 0.f, true);
             m_freeShieldOrbs[i] = summoned->GetObjectGuid();
+            ++m_uiShieldOrbCount;
         }
     }
 
@@ -670,10 +676,14 @@ struct boss_kiljaedenAI : public CombatAI, private DialogueHelper
     {
         if (summoned->GetEntry() == NPC_SHIELD_ORB)
         {
-            --m_uiShieldOrbCount;
             for (uint32 i = 0; i < m_freeShieldOrbs.size(); ++i)
                 if (m_freeShieldOrbs[i] == summoned->GetObjectGuid())
+                {
                     m_freeShieldOrbs[i] = ObjectGuid();
+                    if (m_uiShieldOrbCount)
+                        --m_uiShieldOrbCount;
+                    break;
+                }
         }
     }
 
@@ -906,11 +916,18 @@ struct boss_kiljaedenAI : public CombatAI, private DialogueHelper
                         {1721.7328f, 616.782f,      45.059704f, 4.106034278869628906f},
                         {1694.8438f, 651.71295f,    28.45205f,  5.20198822021484375f},
                         {1682.4557f, 609.28815f,    28.315763f, 0.031090540811419487f},
-                        {0.f,        0.f,           0.f,        0.f} // avoiding a crash here in future
                     };
 
-                    m_creature->SummonCreature(NPC_SHIELD_ORB, positions[i].x, positions[i].y, positions[i].z, positions[i].o, TEMPSPAWN_CORPSE_DESPAWN, 0);
-                    ++m_uiShieldOrbCount;
+                    if (i >= m_freeShieldOrbs.size() || i >= sizeof(positions) / sizeof(positions[0]))
+                    {
+                        ResetCombatAction(action, 45000);
+                        return;
+                    }
+                    if (!m_creature->SummonCreature(NPC_SHIELD_ORB, positions[i].x, positions[i].y, positions[i].z, positions[i].o, TEMPSPAWN_CORPSE_DESPAWN, 0))
+                    {
+                        ResetCombatAction(action, 500);
+                        return;
+                    }
                     ResetCombatAction(action, 45000);
                 }
                 break;

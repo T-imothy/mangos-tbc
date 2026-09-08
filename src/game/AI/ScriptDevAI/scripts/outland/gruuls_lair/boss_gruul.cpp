@@ -84,6 +84,7 @@ struct boss_gruulAI : public CombatAI
     void Reset() override
     {
         CombatAI::Reset();
+        m_lookAround = false;
         SetCombatMovement(true);
         SetMeleeEnabled(true);
     }
@@ -139,12 +140,12 @@ struct boss_gruulAI : public CombatAI
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_GROUND_SLAM_DUMMY) == CAST_OK)
                 {
+                    m_lookAround = true;
                     m_creature->CastSpell(nullptr, SPELL_GROUND_SLAM, TRIGGERED_NONE);
                     DoScriptText(urand(0, 1) ? SAY_SLAM1 : SAY_SLAM2, m_creature);
                     m_creature->SetTarget(nullptr);
                     ResetCombatAction(action, urand(70000, 80000));
                     SetActionReadyStatus(GRUUL_ACTION_SHATTER, true); // top priority, blocked by stun
-                    m_lookAround = true;
                     return;
                 }
                 return;

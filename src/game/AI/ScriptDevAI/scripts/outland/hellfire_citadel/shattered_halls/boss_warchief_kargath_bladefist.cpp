@@ -274,8 +274,8 @@ struct boss_warchief_kargath_bladefistAI : public CombatAI
             case WARCHIEF_KARGATH_CHARGE:
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
                 {
-                    DoCastSpellIfCan(target, SPELL_CHARGE_H);
-                    DisableCombatAction(action);
+                    if (DoCastSpellIfCan(target, SPELL_CHARGE_H) == CAST_OK)
+                        DisableCombatAction(action);
                 }
                 break;
         }
