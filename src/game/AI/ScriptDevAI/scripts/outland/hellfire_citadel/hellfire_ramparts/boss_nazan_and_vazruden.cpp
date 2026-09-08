@@ -490,14 +490,8 @@ struct FaceHighestThreat : public SpellScript
     void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
         Unit* caster = spell->GetCaster();
-        if (!caster)
-            return;
-        ThreatList const& targets = caster->getThreatManager().getThreatList();
-        if (targets.empty())
-            return;
-        if (HostileReference* ref = targets.front())
-            if (Unit* target = ref->getTarget())
-                caster->SetFacingTo(caster->GetAngle(target));
+        if (HostileReference* ref = caster->getThreatManager().getThreatList().front())
+            caster->SetFacingTo(caster->GetAngle(ref->getTarget()));
     }
 };
 

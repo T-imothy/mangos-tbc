@@ -221,7 +221,6 @@ struct InciteChaos : public SpellScript
             case 2: spellId = SPELL_INCITE_CHAOS_SPAWN_3; break;
             case 3: spellId = SPELL_INCITE_CHAOS_SPAWN_4; break;
             case 4: spellId = SPELL_INCITE_CHAOS_SPAWN_5; break;
-            default: return; // No native spawn spell exists beyond the five player slots.
         }
 
         spell->SetScriptValue(spell->GetScriptValue() + 1);

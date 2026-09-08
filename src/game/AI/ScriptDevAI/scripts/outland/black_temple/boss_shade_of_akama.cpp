@@ -603,7 +603,7 @@ struct mob_ashtongue_channelerAI : public ScriptedAI
         {
             if (m_uiBanishTimer <= uiDiff)
             {
-                if (DoCastSpellIfCan(m_creature, SPELL_SHADE_SOUL_CHANNEL) == CAST_OK)
+                if (DoCastSpellIfCan(m_creature, SPELL_SHADE_SOUL_CHANNEL))
                     m_uiBanishTimer = 0;
             }
             else

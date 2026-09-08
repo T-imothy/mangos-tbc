@@ -136,8 +136,7 @@ struct boss_kelidan_the_breakerAI : public CombatAI
         GuidList lAddGuids;
         m_instance->GetKelidanAddList(lAddGuids);
 
-        // Rebuild the current channeler list on each setup, including wipe retries.
-        m_vAddGuids.clear();
+        // Sort Adds to vector if not already done
         if (!lAddGuids.empty())
         {
             m_vAddGuids.reserve(lAddGuids.size());
@@ -171,8 +170,8 @@ struct boss_kelidan_the_breakerAI : public CombatAI
         }
 
         // Cast pentagram
-        size_t s = m_vAddGuids.size();
-        for (size_t i = 0; i < s; ++i)
+        uint8 s = m_vAddGuids.size();
+        for (uint8 i = 0; i < s; ++i)
         {
             Creature* caster = m_instance->instance->GetCreature(m_vAddGuids[i]);
             Creature* target = m_instance->instance->GetCreature(m_vAddGuids[(i + 2) % s]);

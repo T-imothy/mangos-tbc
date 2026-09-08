@@ -156,7 +156,6 @@ struct boss_felblood_kaelthasAI : public CombatAI
     bool m_isRegularMode;
 
     uint32 m_gravityLapseStage;
-    uint32 m_gravityLapseSummons;
 
     bool m_isFirstPhase;
     bool m_firstGravityLapse;
@@ -176,7 +175,6 @@ struct boss_felblood_kaelthasAI : public CombatAI
         else
             SetReactState(REACT_AGGRESSIVE);
         m_gravityLapseStage   = 0;
-        m_gravityLapseSummons = 0;
 
         m_firstGravityLapse    = true;
         m_isFirstPhase         = true;
@@ -340,23 +338,12 @@ struct boss_felblood_kaelthasAI : public CombatAI
         {
             case 0:
                 m_creature->SetFacingTo(m_creature->GetRespawnPosition().o);
-                while (m_gravityLapseSummons < MAX_ARCANE_SPHERES)
-                {
-                    if (DoCastSpellIfCan(nullptr, SPELL_ARCANE_SPHERE_SUMMON) != CAST_OK)
-                    {
-                        ResetTimer(KAEL_GRAVITY_LAPSE_SCRIPT, 500u);
-                        return;
-                    }
-                    ++m_gravityLapseSummons;
-                }
+                for (uint8 i = 0; i < MAX_ARCANE_SPHERES; ++i)
+                    DoCastSpellIfCan(nullptr, SPELL_ARCANE_SPHERE_SUMMON);
                 timer = 1500;
                 break;
             case 1:
-                if (DoCastSpellIfCan(nullptr, SPELL_GRAVITY_LAPSE_VISUAL) != CAST_OK)
-                {
-                    ResetTimer(KAEL_GRAVITY_LAPSE_SCRIPT, 500u);
-                    return;
-                }
+                DoCastSpellIfCan(nullptr, SPELL_GRAVITY_LAPSE_VISUAL);
                 SetCombatScriptStatus(false);
                 SetMeleeEnabled(true);
                 break;
@@ -372,9 +359,8 @@ struct boss_felblood_kaelthasAI : public CombatAI
         {
             case KAEL_ACTION_ENERGY_FEEDBACK:
             {
-                if (DoCastSpellIfCan(nullptr, m_isRegularMode ? SPELL_POWER_FEEDBACK : SPELL_POWER_FEEDBACK_H) != CAST_OK)
-                    return;
                 DoScriptText(SAY_TIRED, m_creature);
+                DoCastSpellIfCan(nullptr, m_isRegularMode ? SPELL_POWER_FEEDBACK : SPELL_POWER_FEEDBACK_H);
                 SetActionReadyStatus(action, false);
                 return;
             }
@@ -393,7 +379,6 @@ struct boss_felblood_kaelthasAI : public CombatAI
 
                     ResetTimer(KAEL_GRAVITY_LAPSE_SCRIPT, 4500);
                     m_gravityLapseStage = 0;
-                    m_gravityLapseSummons = 0;
                     SetCombatScriptStatus(true);
                     m_creature->SetTarget(nullptr);
                     m_creature->SetFacingTo(m_creature->GetRespawnPosition().o);
@@ -537,8 +522,6 @@ struct spell_gravity_lapse_mgt : public SpellScript
             return;
 
         static const uint32 aGravityLapseSpells[] = { 44219, 44220, 44221, 44222, 44223 };
-        if (spell->GetScriptValue() >= sizeof(aGravityLapseSpells) / sizeof(aGravityLapseSpells[0]))
-            return;
         spell->GetCaster()->CastSpell(unitTarget, aGravityLapseSpells[spell->GetScriptValue()], TRIGGERED_OLD_TRIGGERED);
         unitTarget->CastSpell(nullptr, SPELL_GRAVITY_LAPSE_FLY, TRIGGERED_OLD_TRIGGERED);
         if (unitTarget->GetMap()->IsRegularDifficulty())

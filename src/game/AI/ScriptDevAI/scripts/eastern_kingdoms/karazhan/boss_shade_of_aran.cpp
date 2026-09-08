@@ -144,7 +144,6 @@ struct boss_aranAI : public CombatAI
     instance_karazhan* m_instance;
 
     uint8 m_uiLastSuperSpell;
-    uint32 m_elementalSummons;
 
     uint8 m_uiManaRecoveryStage;
 
@@ -157,7 +156,6 @@ struct boss_aranAI : public CombatAI
     {
         CombatAI::Reset();
         m_uiLastSuperSpell = urand(SUPER_FLAME_WREATH, SUPER_ARCANE_EXPL);
-        m_elementalSummons = 0;
 
         m_uiManaRecoveryStage   = 0;
 
@@ -353,16 +351,10 @@ struct boss_aranAI : public CombatAI
                 if (m_creature->GetHealthPercent() > 40.0f)
                     return;
 
-                static const uint32 spells[] = {SPELL_SUMMON_WATER_ELEM_1, SPELL_SUMMON_WATER_ELEM_2,
-                    SPELL_SUMMON_WATER_ELEM_3, SPELL_SUMMON_WATER_ELEM_4};
-                for (uint32 i = 0; i < 4; ++i)
-                {
-                    if (m_elementalSummons & (1u << i))
-                        continue;
-                    if (DoCastSpellIfCan(nullptr, spells[i], CAST_TRIGGERED) != CAST_OK)
-                        return;
-                    m_elementalSummons |= 1u << i;
-                }
+                DoCastSpellIfCan(nullptr, SPELL_SUMMON_WATER_ELEM_1, CAST_TRIGGERED);
+                DoCastSpellIfCan(nullptr, SPELL_SUMMON_WATER_ELEM_2, CAST_TRIGGERED);
+                DoCastSpellIfCan(nullptr, SPELL_SUMMON_WATER_ELEM_3, CAST_TRIGGERED);
+                DoCastSpellIfCan(nullptr, SPELL_SUMMON_WATER_ELEM_4, CAST_TRIGGERED);
 
                 DoScriptText(SAY_ELEMENTALS, m_creature);
 
@@ -388,8 +380,7 @@ struct boss_aranAI : public CombatAI
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, uint32(0), (SELECT_FLAG_PLAYER | SELECT_FLAG_IN_MELEE_RANGE)))
                 {
-                    if (DoCastSpellIfCan(target, SPELL_DRAGONS_BREATH, CAST_TRIGGERED) != CAST_OK)
-                        return;
+                    DoCastSpellIfCan(target, SPELL_DRAGONS_BREATH, CAST_TRIGGERED);
                     DisableCombatAction(action);
                     DelayCombatAction(ARAN_ACTION_SUPERSPELL, 6000); // Duration
                 }
@@ -468,7 +459,7 @@ struct boss_aranAI : public CombatAI
 
                 if (m_choiceVector.size() != 0)
                 {
-                    uint32 currentSpellIndex = m_choiceVector[urand(0, m_choiceVector.size() - 1)];
+                    uint32 currentSpellIndex = urand(0, m_choiceVector.size() - 1);
                     uint32 currentSpellId = GetNormalSpellId(currentSpellIndex);
                     if (DoCastSpellIfCan(target, currentSpellId) == CAST_OK)
                         ResetCombatAction(action, 2000);

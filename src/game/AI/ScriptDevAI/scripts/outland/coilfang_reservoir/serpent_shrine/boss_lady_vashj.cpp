@@ -198,14 +198,6 @@ struct boss_lady_vashjAI : public CombatAI
 
         m_uiSummonSporebatStaticTimer = 30000;
 
-        // Rebuild spatial trigger references for each pull.
-        m_triggerGuids.clear();
-        m_triggerGuidsNorth.clear();
-        m_triggerGuidsSouth.clear();
-        m_triggerGuidsWest.clear();
-        m_triggerGuidsEast.clear();
-        m_triggerGuidsAll.clear();
-
         m_lastSporebatSpell = 0;
         m_multishotGuard = 0;
 
@@ -305,16 +297,6 @@ struct boss_lady_vashjAI : public CombatAI
                 m_triggerGuids.push_back(m_triggerGuidsSouth);
                 m_triggerGuids.push_back(m_triggerGuidsWest);
                 m_triggerGuids.push_back(m_triggerGuidsEast);
-            }
-
-            // Every quadrant is required for the native enchanted-elemental waves.
-            // Missing spawn data must reset the fight instead of omitting waves.
-            if (m_triggerGuidsNorth.empty() || m_triggerGuidsSouth.empty() ||
-                m_triggerGuidsWest.empty() || m_triggerGuidsEast.empty())
-            {
-                script_error_log("Serpentshrine Cavern: missing outer-ring triggers for Lady Vashj.");
-                EnterEvadeMode();
-                return;
             }
 
             m_phase = PHASE_2;
@@ -502,12 +484,6 @@ struct boss_lady_vashjAI : public CombatAI
 
     void HandleCoilfangElite()
     {
-        // Phase timers start before movement initializes the outer ring.
-        if (m_triggerGuidsAll.empty())
-        {
-            ResetTimer(VASHJ_COILFANG_ELITE, 1000);
-            return;
-        }
         uint8 pos = urand(0, m_triggerGuidsAll.size() - 1);
         if (Creature* creature = m_creature->GetMap()->GetCreature(m_triggerGuidsAll[pos]))
             m_creature->CastSpell(creature, SPELL_WAVE_B, TRIGGERED_OLD_TRIGGERED);
@@ -517,12 +493,6 @@ struct boss_lady_vashjAI : public CombatAI
 
     void HandleCoilfangStrider()
     {
-        // Phase timers start before movement initializes the outer ring.
-        if (m_triggerGuidsAll.empty())
-        {
-            ResetTimer(VASHJ_COILFANG_STRIDER, 1000);
-            return;
-        }
         uint8 pos = urand(0, m_triggerGuidsAll.size() - 1);
         if (Creature* creature = m_creature->GetMap()->GetCreature(m_triggerGuidsAll[pos]))
             m_creature->CastSpell(creature, SPELL_WAVE_C, TRIGGERED_OLD_TRIGGERED);
@@ -561,12 +531,6 @@ struct boss_lady_vashjAI : public CombatAI
 
     void HandleTaintedElemental()
     {
-        // Phase timers start before movement initializes the outer ring.
-        if (m_triggerGuidsAll.empty())
-        {
-            ResetTimer(VASHJ_TAINTED_ELEMENTAL, 1000);
-            return;
-        }
         uint8 pos = urand(0, m_triggerGuidsAll.size() - 1);
         if (Creature* creature = m_creature->GetMap()->GetCreature(m_triggerGuidsAll[pos]))
             m_creature->CastSpell(creature, SPELL_WAVE_D, TRIGGERED_OLD_TRIGGERED);

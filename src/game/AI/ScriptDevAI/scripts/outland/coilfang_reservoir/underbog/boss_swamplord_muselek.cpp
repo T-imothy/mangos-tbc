@@ -118,8 +118,7 @@ struct boss_swamplord_muselekAI : public CombatAI
             {
                 if (m_creature->GetHealthPercent() < 70.f)
                 {
-                    if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_THROW_FREEZING_TRAP, TRIGGERED_NONE) != CAST_OK)
-                        return;
+                    DoCastSpellIfCan(m_creature->GetVictim(), SPELL_THROW_FREEZING_TRAP, TRIGGERED_NONE);
                     DoCastSpellIfCan(nullptr, SPELL_HUNTERS_MARK);
                     DistanceYourself();
                     ResetTimer(MUSELEK_ACTION_DETERRENCE, urand(15000, 20000));
@@ -131,8 +130,7 @@ struct boss_swamplord_muselekAI : public CombatAI
             {
                 if (m_creature->GetHealthPercent() < 30.f)
                 {
-                    if (DoCastSpellIfCan(m_creature->GetVictim(), SPELL_THROW_FREEZING_TRAP, TRIGGERED_NONE) != CAST_OK)
-                        return;
+                    DoCastSpellIfCan(m_creature->GetVictim(), SPELL_THROW_FREEZING_TRAP, TRIGGERED_NONE);
                     DoCastSpellIfCan(nullptr, SPELL_HUNTERS_MARK);
                     DistanceYourself();
                     SetActionReadyStatus(action, false);

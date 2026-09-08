@@ -131,7 +131,6 @@ struct boss_ouroAI : public CombatAI
         SetMeleeEnabled(false);
 
         m_burrowCounter = 0;
-        m_rangeCheckState = -1;
     }
 
     void JustRespawned() override

@@ -393,27 +393,16 @@ struct boss_head_of_horsemanAI : public ScriptedAI
 
     void DamageTaken(Unit* dealer, uint32& damage, DamageEffectType damagetype, SpellEntry const* spellInfo) override
     {
-        // Late projectiles must not advance another phase after the head has
-        // already rejoined the body.
-        if (m_creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNINTERACTIBLE))
-        {
-            damage = 0;
-            return;
-        }
+        // allow him to die the last phase
         if (m_uiHeadPhase >= 3)
         {
             ScriptedAI::DamageTaken(dealer, damage, damagetype, spellInfo);
             return;
         }
 
-        const uint32 health = m_creature->GetHealth();
-        const uint32 threshold = std::max(uint32(1), uint32(m_creature->GetMaxHealth() *
-            (100.0f - m_uiHeadPhase * 33.3f) / 100.0f));
-        // Evaluate the incoming hit, not only the health before it. Clamp at
-        // the phase boundary; the final phase keeps native death prevention.
-        if (damage >= health || health - damage <= threshold)
+        // rejoin and switch to next phase
+        if (m_creature->GetHealthPercent() < float(100 - m_uiHeadPhase * 33.3f))
         {
-            damage = health > threshold ? health - threshold : 0;
             DoRejoinHead(false);
             ++m_uiHeadPhase;
         }

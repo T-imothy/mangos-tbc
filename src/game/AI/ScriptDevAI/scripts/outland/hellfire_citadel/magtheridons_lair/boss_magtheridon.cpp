@@ -356,12 +356,10 @@ struct go_manticron_cubeAI : public GameObjectAI
 bool GOUse_go_manticron_cube(Player* player, GameObject* go)
 {
     // if current player is exhausted or last user is still channeling
-    if (player->HasAura(SPELL_MIND_EXHAUSTION) || player->HasAura(SPELL_SHADOW_GRASP))
+    if (player->HasAura(SPELL_MIND_EXHAUSTION))
         return true;
 
-    go_manticron_cubeAI* ai = dynamic_cast<go_manticron_cubeAI*>(go->AI());
-    if (!ai)
-        return true;
+    go_manticron_cubeAI* ai = static_cast<go_manticron_cubeAI*>(go->AI());
     Player* lastUser = ai->GetManticronCubeLastUser();
     if (lastUser && lastUser->HasAura(SPELL_SHADOW_GRASP))
         return true;
@@ -377,11 +375,7 @@ bool GOUse_go_manticron_cube(Player* player, GameObject* go)
                 return true;
 
             // the real spell is cast by player - casts SPELL_SHADOW_GRASP_VISUAL
-            // Remember only an admitted native channel. Otherwise the existing
-            // last-user guard never owns a cube, and another player can reuse
-            // it after the GO's short auto-close while the first still channels.
-            if (player->CastSpell(nullptr, SPELL_SHADOW_GRASP, TRIGGERED_NONE) == SPELL_CAST_OK)
-                ai->SetManticronCubeUser(player->GetObjectGuid());
+            player->CastSpell(nullptr, SPELL_SHADOW_GRASP, TRIGGERED_NONE);
         }
     }
 

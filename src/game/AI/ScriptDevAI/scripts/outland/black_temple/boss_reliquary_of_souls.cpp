@@ -132,26 +132,18 @@ struct boss_reliquary_of_soulsAI : public ScriptedAI
                 default: return;
             }
 
-            if (!m_instance || m_submerged) return;
-            if (DoCastSpellIfCan(nullptr, spellId) != CAST_OK)
-            {
-                ResetTimer(RELIQUARY_ACTION_SUBMERGE, 1000);
-                return;
-            }
             m_submerged = true;
-            DisableTimer(RELIQUARY_ACTION_SUMMON_SOUL);
             GuidVector& souls = m_instance->GetEnslavedSouls();
             DespawnGuids(souls);
-            DoCastSpellIfCan(nullptr, SPELL_SUBMERGE_VISUAL, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
+            DoCastSpellIfCan(nullptr, spellId);
+            DoCastSpellIfCan(nullptr, SPELL_SUBMERGE_VISUAL);
         });
         AddCustomAction(RELIQUARY_ACTION_SUMMON_SOUL, 0u, [&]
         {
-            if (!m_instance || m_submerged || m_phase == PHASE_0_NOT_BEGUN) return;
-            // Preserve successful summons across a partial wave. Failed casts
-            // do not consume the fixed encounter total or increase a later wave.
-            for (uint8 attempt = 0; attempt < 3 && m_soulSummonedCount < MAX_ENSLAVED_SOULS; ++attempt)
-                if (DoCastSpellIfCan(nullptr, SPELL_SUMMON_ENSLAVED_SOUL) == CAST_OK)
-                    ++m_soulSummonedCount;
+            DoCastSpellIfCan(nullptr, SPELL_SUMMON_ENSLAVED_SOUL);
+            DoCastSpellIfCan(nullptr, SPELL_SUMMON_ENSLAVED_SOUL);
+            DoCastSpellIfCan(nullptr, SPELL_SUMMON_ENSLAVED_SOUL);
+            m_soulSummonedCount += 3;
             if (m_soulSummonedCount < MAX_ENSLAVED_SOULS)
                 ResetTimer(RELIQUARY_ACTION_SUMMON_SOUL, 2400);
         });
@@ -168,7 +160,6 @@ struct boss_reliquary_of_soulsAI : public ScriptedAI
     void Reset() override
     {
         m_phase                 = PHASE_0_NOT_BEGUN;
-        m_submerged             = false;
         m_soulDeathCount        = 0;
         m_soulSummonedCount     = 0;
 
@@ -179,11 +170,8 @@ struct boss_reliquary_of_soulsAI : public ScriptedAI
         m_creature->RemoveAurasDueToSpell(SPELL_SUBMERGE_VISUAL);
         m_creature->SetStandState(UNIT_STAND_STATE_SLEEP);
 
-        if (m_instance)
-        {
-            GuidVector& souls = m_instance->GetEnslavedSouls();
-            DespawnGuids(souls);
-        }
+        GuidVector& souls = m_instance->GetEnslavedSouls();
+        DespawnGuids(souls);
         SetCombatMovement(false);
 
         SetReactState(REACT_PASSIVE);
@@ -249,16 +237,13 @@ struct boss_reliquary_of_soulsAI : public ScriptedAI
         switch (summoned->GetEntry())
         {
             case NPC_ESSENCE_SUFFERING:
-                if (m_phase != PHASE_1_SUFFERING) return;
                 DoScriptText(SUFF_SAY_AFTER, summoned);
                 m_phase = PHASE_2_DESIRE;
                 break;
             case NPC_ESSENCE_DESIRE:
-                if (m_phase != PHASE_2_DESIRE) return;
                 DoScriptText(DESI_SAY_AFTER, summoned);
                 m_phase = PHASE_3_ANGER;
                 break;
-            default: return;
         }
 
         // Despawn and set animation

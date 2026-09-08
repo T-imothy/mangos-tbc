@@ -89,7 +89,7 @@ struct boss_soccothratesAI : public CombatAI, private DialogueHelper
     ScriptedInstance* m_instance;
     bool m_isRegularMode;
 
-    ObjectGuid m_chargeTarget;
+    float m_x, m_y, m_z; // last charge target location
     uint8 m_lineUpCounter;
 
     bool m_hasYelledIntro;
@@ -97,8 +97,6 @@ struct boss_soccothratesAI : public CombatAI, private DialogueHelper
     void Reset() override
     {
         CombatAI::Reset();
-        m_chargeTarget.Clear();
-        m_lineUpCounter = 0;
 
         DoCastSpellIfCan(nullptr, m_isRegularMode ? SPELL_IMMOLATION : SPELL_IMMOLATION_H);
     }
@@ -166,7 +164,7 @@ struct boss_soccothratesAI : public CombatAI, private DialogueHelper
     {
         if (summoned->GetEntry() == NPC_WRATH_SCRYER_CHARGE_TARGET)
         {
-            m_chargeTarget = summoned->GetObjectGuid();
+            summoned->GetPosition(m_x, m_y, m_z);
             m_lineUpCounter = 1;
         }
     }
@@ -175,19 +173,15 @@ struct boss_soccothratesAI : public CombatAI, private DialogueHelper
     {
         if (spellInfo->Id == SPELL_FELFIRE_LINE_UP)
         {
-            Creature* marker = m_creature->GetMap()->GetCreature(m_chargeTarget);
-            if (!marker || !target || target->GetEntry() != NPC_WRATH_SCRYER_FELFIRE || !m_lineUpCounter || m_lineUpCounter > 7)
-                return;
-
             // need to get even points between caster and target to reposition felfire evenly
             float sX = m_creature->GetPositionX(), sY = m_creature->GetPositionY(); // source coords
-            float tX = marker->GetPositionX(), tY = marker->GetPositionY(); // current charge marker
+            float tX = m_x, tY = m_y; // target coords
             float felfireDistX = (tX - sX) / 7, felfireDistY = (tY - sY) / 7;
             float fX = sX + (felfireDistX * m_lineUpCounter), fY = sY + (felfireDistY * m_lineUpCounter);
             target->NearTeleportTo(fX, fY, m_creature->GetPositionZ(), m_creature->GetOrientation());
             m_lineUpCounter++;
         }
-        else if (spellInfo->Id == SPELL_CHARGE && target && target->GetEntry() == NPC_WRATH_SCRYER_CHARGE_TARGET)
+        else if (spellInfo->Id == SPELL_CHARGE && target->GetEntry() == NPC_WRATH_SCRYER_CHARGE_TARGET)
             SetCombatMovement(true);
     }
 
@@ -208,36 +202,20 @@ struct boss_soccothratesAI : public CombatAI, private DialogueHelper
 
     void HandleFelfireLineup()
     {
-        if (!m_creature->IsAlive() || !m_creature->IsInCombat())
-            return;
-
-        if (!m_creature->GetMap()->GetCreature(m_chargeTarget))
+        if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
         {
-            m_chargeTarget.Clear();
-            m_lineUpCounter = 0;
-            Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER);
-            if (!target || DoCastSpellIfCan(target, SPELL_CHARGE_TARGETING) != CAST_OK ||
-                !m_creature->GetMap()->GetCreature(m_chargeTarget))
+            if (DoCastSpellIfCan(target, SPELL_CHARGE_TARGETING) == CAST_OK)
             {
-                ResetTimer(SOCCOTHRATES_FELFIRE_LINEUP, 500);
-                return;
+                m_creature->CastSpell(nullptr, SPELL_FELFIRE_LINE_UP, TRIGGERED_OLD_TRIGGERED);
+                DoBroadcastText(urand(0, 1) ? SAY_CHARGE_1 : SAY_CHARGE_2, m_creature, target);
             }
-            DoBroadcastText(urand(0, 1) ? SAY_CHARGE_1 : SAY_CHARGE_2, m_creature, target);
         }
-
-        m_lineUpCounter = 1;
-        if (m_creature->CastSpell(nullptr, SPELL_FELFIRE_LINE_UP, TRIGGERED_OLD_TRIGGERED) != SPELL_CAST_OK)
-            ResetTimer(SOCCOTHRATES_FELFIRE_LINEUP, 500);
     }
 
     void OnSpellCast(SpellEntry const* spellInfo, Unit* /*target*/) override
     {
         if (spellInfo->Id == SPELL_KNOCK_AWAY)
-        {
-            m_chargeTarget.Clear();
-            m_lineUpCounter = 0;
             ResetTimer(SOCCOTHRATES_FELFIRE_LINEUP, 2000);
-        }
     }
 
     void UpdateAI(const uint32 uiDiff) override

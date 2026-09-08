@@ -105,7 +105,6 @@ struct boss_grand_warlock_nethekurseAI : public CombatAI
         CombatAI::Reset();
 
         m_peonKilledCount = 0;
-        m_peonRPCD = false;
 
         SetCombatMovement(true);
     }
@@ -138,12 +137,11 @@ struct boss_grand_warlock_nethekurseAI : public CombatAI
         DisableTimer(NETHEKURSE_TAUNT_PEONS);
     }
     void DoYellForPeonDeath()
-    {
+    {        
         if (m_peonKilledCount >= 4)
             return;
 
-        // Dialogue cooldowns must not discard deaths from simultaneous kills.
-        ++m_peonKilledCount;
+
         if (!m_peonRPCD)
         {
             m_creature->GetMotionMaster()->PauseWaypoints(4000);
@@ -156,15 +154,23 @@ struct boss_grand_warlock_nethekurseAI : public CombatAI
                 case 1: DoBroadcastText(SAY_PEON_DIE_2, m_creature); break;
                 case 2: DoBroadcastText(SAY_PEON_DIE_3, m_creature); break;
             }
-            ResetTimer(NETHEKURSE_PEON_RP_CD, 5000);
-            m_peonRPCD = true;
-        }
 
-        if (m_peonKilledCount == 4)
-        {
-            DisableTimer(NETHEKURSE_TAUNT_PEONS);
-            SetReactState(REACT_AGGRESSIVE);
-            ResetTimer(NETHEKURSE_START_FIGHT, 4000);
+            ++m_peonKilledCount;
+
+            if (m_peonKilledCount == 4)
+            {
+                DisableTimer(NETHEKURSE_TAUNT_PEONS);
+                SetReactState(REACT_AGGRESSIVE);
+
+                // Start fight after 4 seconds
+                ResetTimer(NETHEKURSE_START_FIGHT, 4000);
+            }
+            else
+            {
+                ResetTimer(NETHEKURSE_PEON_RP_CD, 5000);
+                m_peonRPCD = true;
+            }
+
         }
     }
 
@@ -314,7 +320,7 @@ struct mob_fel_orc_convertAI : public ScriptedAI
                 {
                     // Only call alive creatures
                     if (!legionnaire->IsAlive())
-                        continue;
+                        return;
 
                     SendAIEvent(AI_EVENT_JUST_DIED, m_creature, legionnaire);
                 }

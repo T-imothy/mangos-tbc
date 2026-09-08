@@ -251,7 +251,7 @@ struct boss_anzuAI : public CombatAI
         switch (i)
         {
             case ANZU_ACTION_SPAWN_BROODS:
-                if (m_creature->GetHealthPercent() < m_healthBroodCheck && CanExecuteCombatAction())
+                if (m_creature->GetHealthPercent() < m_healthBanishCheck && CanExecuteCombatAction())
                 {
                     DoSummonBroodsOfAnzu();
                     m_healthBroodCheck -= 40.0f;
@@ -276,7 +276,7 @@ struct boss_anzuAI : public CombatAI
 
 struct npc_anzu_bird_spiritAI : public ScriptedAI
 {
-    npc_anzu_bird_spiritAI(Creature* creature) : ScriptedAI(creature), m_spiritSpellId(GetSpellId()), m_duration(0), m_refreshTimer(0) {}
+    npc_anzu_bird_spiritAI(Creature* creature) : ScriptedAI(creature), m_spiritSpellId(GetSpellId()), m_duration(0) {}
 
     uint32 m_spiritSpellId;
     uint32 m_duration;

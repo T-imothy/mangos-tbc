@@ -239,8 +239,6 @@ struct boss_netherspiteAI : public CombatAI
 
                 DespawnPortals();
             }
-            else
-                return; // A rejected phase change must not reset threat.
         }
         else
         {

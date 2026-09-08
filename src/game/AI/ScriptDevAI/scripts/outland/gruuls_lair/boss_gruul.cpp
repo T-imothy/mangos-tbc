@@ -84,7 +84,6 @@ struct boss_gruulAI : public CombatAI
     void Reset() override
     {
         CombatAI::Reset();
-        m_lookAround = false;
         SetCombatMovement(true);
         SetMeleeEnabled(true);
     }
@@ -140,12 +139,12 @@ struct boss_gruulAI : public CombatAI
             {
                 if (DoCastSpellIfCan(nullptr, SPELL_GROUND_SLAM_DUMMY) == CAST_OK)
                 {
-                    m_lookAround = true;
                     m_creature->CastSpell(nullptr, SPELL_GROUND_SLAM, TRIGGERED_NONE);
                     DoScriptText(urand(0, 1) ? SAY_SLAM1 : SAY_SLAM2, m_creature);
                     m_creature->SetTarget(nullptr);
                     ResetCombatAction(action, urand(70000, 80000));
                     SetActionReadyStatus(GRUUL_ACTION_SHATTER, true); // top priority, blocked by stun
+                    m_lookAround = true;
                     return;
                 }
                 return;
@@ -194,38 +193,31 @@ struct GronnLordsGrasp : public AuraScript
 
 struct HurtfulStrikePrimer : public SpellScript
 {
-    void OnInit(Spell* spell) const override { spell->SetScriptValue(0); }
-
     bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
     {
-        Unit* caster = spell->GetCaster();
-        return caster && target && target->IsPlayer() && target->IsAlive() &&
-            caster->IsInMap(target) && caster->CanReachWithMeleeAttack(target);
+        if (target->GetTypeId() != TYPEID_PLAYER || !spell->GetCaster()->CanReachWithMeleeAttack(target))
+            return false;
+        return true;
     }
 
-    void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
+    void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
     {
-        if (effIdx != EFFECT_INDEX_0 || spell->GetScriptValue()) return;
+        Unit* target = spell->GetUnitTarget();
         Unit* caster = spell->GetCaster();
-        if (!caster || !caster->IsAlive()) return;
-        Unit* selected = nullptr;
-        Unit* tank = nullptr;
-        float highestThreat = -1.0f;
-        // Resolve each player again: a queued target can leave, die or move
-        // before this callback. Do not wait for the final target to survive.
-        for (const auto& info : spell->GetTargetList())
+        auto& targetInfo = spell->GetTargetList();
+        if (!target || targetInfo.rbegin()->targetGUID != target->GetObjectGuid())
+            return;
+
+        for (auto& targetInfo : targetInfo)
         {
-            Player* candidate = caster->GetMap()->GetPlayer(info.targetGUID);
-            if (!OnCheckTarget(spell, candidate, effIdx)) continue;
-            if (candidate == caster->GetVictim()) { tank = candidate; continue; }
-            const float threat = caster->getThreatManager().getThreat(candidate);
-            if (threat > highestThreat) { selected = candidate; highestThreat = threat; }
+            if (caster->GetMap()->GetPlayer(targetInfo.targetGUID) == caster->GetVictim())
+                continue;
+
+            if (caster->getThreatManager().getThreat(caster->GetMap()->GetPlayer(targetInfo.targetGUID)) > caster->getThreatManager().getThreat(target) || target == caster->GetVictim())
+                target = caster->GetMap()->GetPlayer(targetInfo.targetGUID);
         }
-        if (!selected) selected = tank;
-        if (!selected) return;
-        // One strike per primer, even when several effect callbacks arrive.
-        spell->SetScriptValue(1);
-        caster->CastSpell(selected, 33813, TRIGGERED_IGNORE_GCD | TRIGGERED_IGNORE_CURRENT_CASTED_SPELL | TRIGGERED_NORMAL_COMBAT_CAST);
+
+        caster->CastSpell(target, 33813, TRIGGERED_IGNORE_GCD | TRIGGERED_IGNORE_CURRENT_CASTED_SPELL | TRIGGERED_NORMAL_COMBAT_CAST);
     }
 };
 

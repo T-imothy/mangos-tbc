@@ -929,11 +929,6 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
         {
             case PHASETRANSITION_LIFTOFF:
             {
-                if (!m_instance)
-                {
-                    ResetTimer(ILLIDAN_ACTION_PHASE_TRANSITION, 1000);
-                    return;
-                }
                 switch (m_phaseTransitionStage)
                 {
                     case 0:
@@ -975,11 +970,6 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
                                     closestTrigger = trigger;
                             }
                         }
-                        if (!closestTrigger)
-                        {
-                            ResetTimer(ILLIDAN_ACTION_PHASE_TRANSITION, 1000);
-                            return;
-                        }
                         float x, y, z;
                         closestTrigger->GetPosition(x, y, z);
                         m_creature->GetMotionMaster()->MovePoint(POINT_ILLIDAN_FLIGHT, x, y, z, FORCED_MOVEMENT_RUN);
@@ -992,23 +982,11 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
                             // Need to provide explicit glaive targets
                             GuidVector targets;
                             m_instance->GetGlaiveTargetGuidVector(targets);
-                            if (targets.size() <= 0)
-                            {
-                                ResetTimer(ILLIDAN_ACTION_PHASE_TRANSITION, 1000);
-                                return;
-                            }
                             Creature* glaive1 = m_creature->GetMap()->GetCreature(targets[0]);
                             if (!glaive1)
-                            {
-                                ResetTimer(ILLIDAN_ACTION_PHASE_TRANSITION, 1000);
-                                return;
-                            }
+                                break;
                             // Summon both blades and remove them from equipment
-                            if (DoCastSpellIfCan(glaive1, SPELL_THROW_GLAIVE_VISUAL) != CAST_OK)
-                            {
-                                ResetTimer(ILLIDAN_ACTION_PHASE_TRANSITION, 1000);
-                                return;
-                            }
+                            DoCastSpellIfCan(glaive1, SPELL_THROW_GLAIVE_VISUAL);
                             nextTimer = 2000;
                         }
                         break;
@@ -1020,22 +998,10 @@ struct boss_illidan_stormrageAI : public CombatAI, private DialogueHelper
                             // Need to provide explicit glaive targets
                             GuidVector targets;
                             m_instance->GetGlaiveTargetGuidVector(targets);
-                            if (targets.size() <= 1)
-                            {
-                                ResetTimer(ILLIDAN_ACTION_PHASE_TRANSITION, 1000);
-                                return;
-                            }
                             Creature* glaive2 = m_creature->GetMap()->GetCreature(targets[1]);
                             if (!glaive2)
-                            {
-                                ResetTimer(ILLIDAN_ACTION_PHASE_TRANSITION, 1000);
-                                return;
-                            }
-                            if (DoCastSpellIfCan(glaive2, SPELL_THROW_GLAIVE, CAST_TRIGGERED) != CAST_OK)
-                            {
-                                ResetTimer(ILLIDAN_ACTION_PHASE_TRANSITION, 1000);
-                                return;
-                            }
+                                break;
+                            DoCastSpellIfCan(glaive2, SPELL_THROW_GLAIVE, CAST_TRIGGERED);
                             SetEquipmentSlots(false, EQUIP_UNEQUIP, EQUIP_UNEQUIP, EQUIP_NO_CHANGE);
                             m_currentTransition = PHASETRANSITION_NONE;
                             m_phase = PHASE_2_FLIGHT;

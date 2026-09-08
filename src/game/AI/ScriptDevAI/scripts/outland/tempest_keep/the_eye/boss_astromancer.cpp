@@ -126,10 +126,10 @@ struct boss_high_astromancer_solarianAI : public CombatAI
         AddCombatAction(SOLARIAN_BLINDING_LIGHT, 30000u);
         AddCombatAction(SOLARIAN_VOID_BOLT, true);
         AddCombatAction(SOLARIAN_FEAR, true);
-        AddCustomAction(SOLARIAN_PHASE_2_DELAY, true, [&]() { HandlePhase2Delay(); }, TIMER_COMBAT_COMBAT);
-        AddCustomAction(SOLARIAN_SPLIT_PHASE_DELAY, true, [&]() { HandleSplitPhaseDelay(); }, TIMER_COMBAT_COMBAT);
-        AddCustomAction(SOLARIAN_SPLIT_AGENTS, true, [&]() { HandleSplitAgents(); }, TIMER_COMBAT_COMBAT);
-        AddCustomAction(SOLARIAN_SPLIT_PRIESTS, true, [&]() { HandleSplitPriests(); }, TIMER_COMBAT_COMBAT);
+        AddCustomAction(SOLARIAN_PHASE_2_DELAY, true, [&]() { HandlePhase2Delay(); });
+        AddCustomAction(SOLARIAN_SPLIT_PHASE_DELAY, true, [&]() { HandleSplitPhaseDelay(); });
+        AddCustomAction(SOLARIAN_SPLIT_AGENTS, true, [&]() { HandleSplitAgents(); });
+        AddCustomAction(SOLARIAN_SPLIT_PRIESTS, true, [&]() { HandleSplitPriests(); });
         m_uiDefaultArmor = m_creature->GetArmor();
         AddOnKillText(SAY_KILL1, SAY_KILL2, SAY_KILL3);
     }
@@ -149,7 +149,6 @@ struct boss_high_astromancer_solarianAI : public CombatAI
         m_Phase = PHASE_NORMAL;
 
         // The vector will store the summoned spotlights
-        m_vSpotLightsGuidVector.clear();
         m_vSpotLightsGuidVector.reserve(MAX_SPOTLIGHTS);
 
         m_creature->SetArmor(m_uiDefaultArmor);
@@ -157,8 +156,6 @@ struct boss_high_astromancer_solarianAI : public CombatAI
             m_creature->SetVisibility(VISIBILITY_ON);
 
         SetCombatMovement(true);
-        SetCombatScriptStatus(false);
-        SetMeleeEnabled(true);
     }
 
     void JustDied(Unit* /*killer*/) override
@@ -214,9 +211,6 @@ struct boss_high_astromancer_solarianAI : public CombatAI
 
     void HandlePhase2Delay()
     {
-        if (m_Phase != PHASE_VOID || !m_creature->IsAlive() || !m_creature->IsInCombat())
-            return;
-
         DoBroadcastText(SAY_VOIDB, m_creature);
 
         SetCombatScriptStatus(false);
@@ -232,8 +226,9 @@ struct boss_high_astromancer_solarianAI : public CombatAI
 
     void HandleSplitPhaseDelay()
     {
-        if (m_Phase != PHASE_SPLIT || !m_creature->IsAlive() || !m_creature->IsInCombat())
-            return;
+        // select two different numbers between 0 and 7 so we will get different spawn points for the spotlights
+        uint8 uiPos1 = urand(0, 7);
+        uint8 uiPos2 = (uiPos1 + urand(1, 7)) % 8;
 
         // summon 3 spotlights
         m_vSpotLightsGuidVector.clear();
@@ -245,40 +240,8 @@ struct boss_high_astromancer_solarianAI : public CombatAI
         ResetTimer(SOLARIAN_SPLIT_AGENTS, 5000);
     }
 
-    bool ValidateSplitSpotlights()
-    {
-        if (m_Phase != PHASE_SPLIT || !m_creature->IsAlive() || !m_creature->IsInCombat())
-            return false;
-
-        bool valid = m_vSpotLightsGuidVector.size() == MAX_SPOTLIGHTS;
-        if (valid)
-            for (ObjectGuid guid : m_vSpotLightsGuidVector)
-            {
-                Creature* spotlight = m_creature->GetMap()->GetCreature(guid);
-                if (!spotlight || !spotlight->IsAlive() || !spotlight->IsInWorld() ||
-                    spotlight->GetEntry() != NPC_ASTROMANCER_SOLARIAN_SPOTLIGHT ||
-                    std::count(m_vSpotLightsGuidVector.begin(), m_vSpotLightsGuidVector.end(), guid) != 1)
-                {
-                    valid = false;
-                    break;
-                }
-            }
-
-        if (!valid)
-        {
-            // A failed/despawned summon must not index past the vector or skip
-            // part of the encounter. Abort through the normal evade/reset path.
-            sLog.outError("Solarian split has an invalid spotlight set; resetting the encounter.");
-            EnterEvadeMode();
-        }
-        return valid;
-    }
-
     void HandleSplitAgents()
     {
-        if (!ValidateSplitSpotlights())
-            return;
-
         for (uint8 i = 0; i < MAX_SPOTLIGHTS; ++i)
             if (Creature* spotlight = m_creature->GetMap()->GetCreature(m_vSpotLightsGuidVector[i]))
                 spotlight->CastSpell(nullptr, SPELL_ASTROMANCER_ADDS, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, m_creature->GetObjectGuid());
@@ -288,9 +251,6 @@ struct boss_high_astromancer_solarianAI : public CombatAI
 
     void HandleSplitPriests()
     {
-        if (!ValidateSplitSpotlights())
-            return;
-
         m_Phase = PHASE_NORMAL;
         // Randomize the portals
         std::shuffle(m_vSpotLightsGuidVector.begin(), m_vSpotLightsGuidVector.end(), *GetRandomGenerator());
@@ -304,7 +264,6 @@ struct boss_high_astromancer_solarianAI : public CombatAI
 
         SetCombatScriptStatus(false);
         SetCombatMovement(true, true);
-        SetMeleeEnabled(true);
 
         // Set as visible and reset spells timers
         m_creature->SetVisibility(VISIBILITY_ON);

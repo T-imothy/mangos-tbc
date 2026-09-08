@@ -124,32 +124,20 @@ struct boss_terestianAI : public CombatAI
 
     void HandleSummonPortal()
     {
-        if (DoCastSpellIfCan(nullptr, SPELL_FIENDISH_PORTAL) != CAST_OK)
-        {
-            ResetTimer(ILLHOOF_ACTION_SUMMON, 500u);
-            return;
-        }
-        DoBroadcastText(urand(0, 1) ? SAY_SUMMON1 : SAY_SUMMON2, m_creature);
+        if (DoCastSpellIfCan(nullptr, SPELL_FIENDISH_PORTAL) == CAST_OK)
+            DoBroadcastText(urand(0, 1) ? SAY_SUMMON1 : SAY_SUMMON2, m_creature);
         DisableCombatAction(ILLHOOF_ACTION_SUMMON);
     }
 
     void HandleSummonKilrek()
     {
-        if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_IMP) != CAST_OK)
-        {
-            ResetTimer(ILLHOOF_ACTION_SUMMON_KILREK, 500u);
-            return;
-        }
+        DoCastSpellIfCan(m_creature, SPELL_SUMMON_IMP);
         DisableCombatAction(ILLHOOF_ACTION_SUMMON_KILREK);
     }
 
     void HandleBerserk()
     {
-        if (DoCastSpellIfCan(nullptr, SPELL_BERSERK) != CAST_OK)
-        {
-            ResetTimer(ILLHOOF_ACTION_BERSERK, 500u);
-            return;
-        }
+        DoCastSpellIfCan(nullptr, SPELL_BERSERK);
         DisableCombatAction(ILLHOOF_ACTION_BERSERK);
     }
 

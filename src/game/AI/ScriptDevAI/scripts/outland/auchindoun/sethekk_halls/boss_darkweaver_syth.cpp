@@ -77,14 +77,6 @@ struct boss_darkweaver_sythAI : public CombatAI
     }
 
     bool m_isRegularMode;
-    uint8 m_summonedElements[SYTH_ACTION_MAX] = {};
-
-    void Reset() override
-    {
-        CombatAI::Reset();
-        for (uint8& elements : m_summonedElements)
-            elements = 0;
-    }
 
     void Aggro(Unit* /*who*/) override
     {
@@ -114,21 +106,14 @@ struct boss_darkweaver_sythAI : public CombatAI
     }
 
     // Wrapper to handle the elementals summon
-    bool SythSummoning(uint32 action)
+    void SythSummoning()
     {
-        // Retain successful summons when another elemental fails. Each health
-        // threshold owns its mask, so retrying cannot duplicate a partial wave.
-        static const uint32 spells[] = {SPELL_SUMMON_SYTH_ARCANE, SPELL_SUMMON_SYTH_FIRE,
-            SPELL_SUMMON_SYTH_FROST, SPELL_SUMMON_SYTH_SHADOW};
-        uint8& summoned = m_summonedElements[action];
-        for (uint32 i = 0; i < 4; ++i)
-            if (!(summoned & (1u << i)) &&
-                m_creature->CastSpell(nullptr, spells[i], TRIGGERED_IGNORE_COOLDOWNS) == SPELL_CAST_OK)
-                summoned |= 1u << i;
-        if (summoned != 15)
-            return false;
         DoBroadcastText(SAY_SUMMON, m_creature);
-        return true;
+
+        m_creature->CastSpell(nullptr, SPELL_SUMMON_SYTH_ARCANE, TRIGGERED_IGNORE_COOLDOWNS); // front
+        m_creature->CastSpell(nullptr, SPELL_SUMMON_SYTH_FIRE, TRIGGERED_IGNORE_COOLDOWNS); // back
+        m_creature->CastSpell(nullptr, SPELL_SUMMON_SYTH_FROST, TRIGGERED_IGNORE_COOLDOWNS); // left
+        m_creature->CastSpell(nullptr, SPELL_SUMMON_SYTH_SHADOW, TRIGGERED_IGNORE_COOLDOWNS); // right
     }
 
     void ExecuteAction(uint32 action) override
@@ -141,22 +126,22 @@ struct boss_darkweaver_sythAI : public CombatAI
             case SYTH_90:
                 if (m_creature->GetHealthPercent() < 90.0f)
                 {
-                    if (SythSummoning(action))
-                        SetActionReadyStatus(action, false);
+                    SythSummoning();
+                    SetActionReadyStatus(action, false);
                 }
                 break;
             case SYTH_55:
                 if (m_creature->GetHealthPercent() < 55.0f)
                 {
-                    if (SythSummoning(action))
-                        SetActionReadyStatus(action, false);
+                    SythSummoning();
+                    SetActionReadyStatus(action, false);
                 }
                 break;
             case SYTH_15:
                 if (m_creature->GetHealthPercent() < 15.0f)
                 {
-                    if (SythSummoning(action))
-                        SetActionReadyStatus(action, false);
+                    SythSummoning();
+                    SetActionReadyStatus(action, false);
                 }
                 break;
         }
