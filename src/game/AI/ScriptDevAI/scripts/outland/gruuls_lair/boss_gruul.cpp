@@ -194,31 +194,38 @@ struct GronnLordsGrasp : public AuraScript
 
 struct HurtfulStrikePrimer : public SpellScript
 {
+    void OnInit(Spell* spell) const override { spell->SetScriptValue(0); }
+
     bool OnCheckTarget(const Spell* spell, Unit* target, SpellEffectIndex /*eff*/) const override
     {
-        if (target->GetTypeId() != TYPEID_PLAYER || !spell->GetCaster()->CanReachWithMeleeAttack(target))
-            return false;
-        return true;
+        Unit* caster = spell->GetCaster();
+        return caster && target && target->IsPlayer() && target->IsAlive() &&
+            caster->IsInMap(target) && caster->CanReachWithMeleeAttack(target);
     }
 
-    void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
+    void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
     {
-        Unit* target = spell->GetUnitTarget();
+        if (effIdx != EFFECT_INDEX_0 || spell->GetScriptValue()) return;
         Unit* caster = spell->GetCaster();
-        auto& targetInfo = spell->GetTargetList();
-        if (!target || targetInfo.rbegin()->targetGUID != target->GetObjectGuid())
-            return;
-
-        for (auto& targetInfo : targetInfo)
+        if (!caster || !caster->IsAlive()) return;
+        Unit* selected = nullptr;
+        Unit* tank = nullptr;
+        float highestThreat = -1.0f;
+        // Resolve each player again: a queued target can leave, die or move
+        // before this callback. Do not wait for the final target to survive.
+        for (const auto& info : spell->GetTargetList())
         {
-            if (caster->GetMap()->GetPlayer(targetInfo.targetGUID) == caster->GetVictim())
-                continue;
-
-            if (caster->getThreatManager().getThreat(caster->GetMap()->GetPlayer(targetInfo.targetGUID)) > caster->getThreatManager().getThreat(target) || target == caster->GetVictim())
-                target = caster->GetMap()->GetPlayer(targetInfo.targetGUID);
+            Player* candidate = caster->GetMap()->GetPlayer(info.targetGUID);
+            if (!OnCheckTarget(spell, candidate, effIdx)) continue;
+            if (candidate == caster->GetVictim()) { tank = candidate; continue; }
+            const float threat = caster->getThreatManager().getThreat(candidate);
+            if (threat > highestThreat) { selected = candidate; highestThreat = threat; }
         }
-
-        caster->CastSpell(target, 33813, TRIGGERED_IGNORE_GCD | TRIGGERED_IGNORE_CURRENT_CASTED_SPELL | TRIGGERED_NORMAL_COMBAT_CAST);
+        if (!selected) selected = tank;
+        if (!selected) return;
+        // One strike per primer, even when several effect callbacks arrive.
+        spell->SetScriptValue(1);
+        caster->CastSpell(selected, 33813, TRIGGERED_IGNORE_GCD | TRIGGERED_IGNORE_CURRENT_CASTED_SPELL | TRIGGERED_NORMAL_COMBAT_CAST);
     }
 };
 

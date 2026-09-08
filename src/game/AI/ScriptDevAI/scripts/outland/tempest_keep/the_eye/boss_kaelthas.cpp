@@ -513,7 +513,8 @@ struct boss_kaelthasAI : public CombatAI
     void SpellHitTarget(Unit* target, const SpellEntry* spellInfo) override
     {
         // Handle gravity lapse teleport - each player hit has his own teleport spell
-        if (spellInfo->Id == SPELL_GRAVITY_LAPSE && target->IsPlayer())
+        if (spellInfo->Id == SPELL_GRAVITY_LAPSE && target->IsPlayer() &&
+            m_uiGravityIndex < sizeof(m_spellGravityLapseTeleport) / sizeof(m_spellGravityLapseTeleport[0]))
         {
             DoCastSpellIfCan(target, m_spellGravityLapseTeleport[m_uiGravityIndex], CAST_TRIGGERED);
             target->CastSpell(nullptr, SPELL_GRAVITY_LAPSE_KNOCKBACK, TRIGGERED_OLD_TRIGGERED);
