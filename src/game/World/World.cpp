@@ -84,6 +84,7 @@
 #include "playerbot/PlayerbotAIConfig.h"
 #include "playerbot/PlayerbotAI.h"
 #include "playerbot/RandomPlayerbotMgr.h"
+#include "playerbot/BotRecruitment.h"
 #include "playerbot/RandomItemMgr.h"
 #include "playerbot/TravelMgr.h"
 #include "playerbot/strategy/Engine.h"
@@ -1824,6 +1825,10 @@ void World::Update(uint32 diff)
 #endif
     const uint32 performanceSessionStart = WorldTimer::getMSTime();
     UpdateSessions(diff);
+#ifdef ENABLE_PLAYERBOTS
+    // Process human membership packets before bounded bot recruitment work.
+    ai::BotRecruitment::Update(diff);
+#endif
     performanceSessionElapsed = WorldTimer::getMSTimeDiff(performanceSessionStart, WorldTimer::getMSTime());
 
     /// <li> Update uptime table
