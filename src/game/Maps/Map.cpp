@@ -71,8 +71,12 @@ Map::~Map()
     delete m_weatherSystem;
     m_weatherSystem = nullptr;
 
-    for (auto m_Transport : m_transports)
-        delete m_Transport;
+    for (auto transport : m_transports)
+    {
+        transport->Object::RemoveFromWorld();
+        transport->ResetMap();
+        delete transport;
+    }
 }
 
 uint32 Map::GetCurrentMSTime() const
@@ -1673,7 +1677,7 @@ void Map::SendRemoveInfinite(Player* player) const
     updateData.SendData(*player->GetSession());
 }
 
-void Map::UpdateInfinite(Player& player, UpdateData& updateData, GuidSet& clientGUIDs, WorldObjectSet& visibleNow) const
+void Map::UpdateInfinite(Player& player, UpdateData& updateData, GuidSet& /*clientGUIDs*/, WorldObjectSet& visibleNow) const
 {
     for (auto i : m_infiniteObjects)
     {
