@@ -9788,7 +9788,8 @@ void ObjectMgr::LoadVendors()
                 {
                     for (auto& itemVendor : dataVendor.m_items)
                     {
-                        if (itemTemplate->item == itemVendor->item)
+                        if (itemTemplate->item == itemVendor->item && itemTemplate->conditionId == itemVendor->conditionId &&
+                            itemTemplate->ExtendedCost == itemVendor->ExtendedCost)
                             sLog.outErrorDb("Creature (Entry: %u) has VendorTemplateId = %u that has same item in both npc_vendor and npc_vendor_template.", cInfo->Entry, cInfo->VendorTemplateId);
                     }
                 }
