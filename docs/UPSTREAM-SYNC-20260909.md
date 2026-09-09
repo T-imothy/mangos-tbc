@@ -2,7 +2,7 @@
 
 CMaNGOS authority: `368b7ef328fa2a472824df55f2195b49f1aaa747`.
 Incoming upstream commits: 7.
-Playerbots dependency: `7f45ddd8ae9fa8830f9231544ac2fae3126e92f5`.
+Playerbots dependency: `70fe52044e3613e52ab1a5bc8ad7346888177c29`.
 
 2b1d4fa37 Fix non-PCH build.
 8a0b3a865 Another round of GCC/Clang 'unused parameter' compiler warning fixes.
