@@ -19865,6 +19865,7 @@ void Player::SendInitialPacketsBeforeAddToMap()
     data << uint32(0);
     GetSession()->SendPacket(data);
 
+    GetSession()->SendItemQuerySingleResponse(65000); // Refresh the instant portable mailbox carrier.
     GetSession()->SendItemQuerySingleResponse(65003); // Refresh the cross-faction level-40 reward requirements.
     SendInitialSpells();
 

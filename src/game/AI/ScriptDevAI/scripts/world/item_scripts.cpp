@@ -28,6 +28,8 @@ item_gor_dreks_ointment(i30175)     Protecting Our Own(q10488)
 EndContentData */
 
 #include "AI/ScriptDevAI/include/sc_common.h"
+#include "Entities/GameObject.h"
+#include "Maps/Map.h"
 #include "Spells/Spell.h"
 #include "Spells/Scripts/SpellScript.h"
 
@@ -583,6 +585,70 @@ struct ShattrathFlasks : public AuraScript
 
 namespace
 {
+    struct ManTechPortableMailboxSpell : public SpellScript
+    {
+        SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
+        {
+            Item* item = spell->GetCastItem();
+            if (!item || item->GetEntry() != 65000)
+                return SPELL_CAST_OK;
+
+            WorldObject* caster = spell->GetTrueCaster();
+            GameObjectInfo const* info = ObjectMgr::GetGameObjectInfo(142102);
+            if (!caster || caster->GetTypeId() != TYPEID_PLAYER || !caster->IsInWorld() ||
+                !info || info->type != GAMEOBJECT_TYPE_MAILBOX)
+                return SPELL_FAILED_NOT_HERE;
+            return SPELL_CAST_OK;
+        }
+
+        void OnCast(Spell* spell) const override
+        {
+            Item* item = spell->GetCastItem();
+            WorldObject* caster = spell->GetTrueCaster();
+            if (!item || item->GetEntry() != 65000 || !caster ||
+                caster->GetTypeId() != TYPEID_PLAYER || !caster->IsInWorld())
+                return;
+
+            Player* player = static_cast<Player*>(caster);
+            Map* map = player->GetMap();
+            float x, y, z;
+            player->GetClosePoint(x, y, z, DEFAULT_WORLD_OBJECT_SIZE, 1.0f);
+
+            GameObject* mailbox = GameObject::CreateGameObject(142102);
+            uint32 lowGuid = map->GenerateLocalLowGuid(HIGHGUID_GAMEOBJECT);
+            if (!mailbox->Create(lowGuid, lowGuid, 142102, map, x, y, z, player->GetOrientation()))
+            {
+                delete mailbox;
+                // OnCast runs after SendSpellCooldown. Refund only this spell
+                // if creation fails instead of consuming the utility's charge.
+                player->RemoveSpellCooldown(*spell->m_spellInfo);
+                player->GetSession()->SendNotification("The portable mailbox could not be summoned. Its cooldown was reset.");
+                return;
+            }
+
+            mailbox->SetRespawnTime(300);
+            mailbox->SetSpellId(spell->m_spellInfo->Id);
+            mailbox->SetSpawnerGuid(player->GetObjectGuid());
+            map->Add(mailbox);
+            mailbox->AIM_Initialize();
+        }
+    };
+
+    struct ManTechPortableRepairSpell : public SpellScript
+    {
+        void OnSummon(Spell* spell, Creature* summon) const override
+        {
+            Item* item = spell->GetCastItem();
+            WorldObject* caster = spell->GetTrueCaster();
+            if (!item || item->GetEntry() != 65001 || !caster ||
+                caster->GetTypeId() != TYPEID_PLAYER || !summon || summon->GetEntry() != 24780)
+                return;
+
+            Player* player = static_cast<Player*>(caster);
+            summon->SetFactionTemporary(player->GetTeam() == ALLIANCE ? 12 : 29, TEMPFACTION_NONE);
+        }
+    };
+
     struct ManTechPortableAuctioneerSpell : public SpellScript
     {
         SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
@@ -621,6 +687,8 @@ namespace
 
 void AddSC_item_scripts()
 {
+    RegisterSpellScript<ManTechPortableMailboxSpell>("spell_mantech_portable_mailbox");
+    RegisterSpellScript<ManTechPortableRepairSpell>("spell_mantech_portable_repair");
     RegisterSpellScript<ManTechPortableAuctioneerSpell>("spell_mantech_portable_auctioneer");
     Script* pNewScript = new Script;
     pNewScript->Name = "item_orb_of_draconic_energy";
