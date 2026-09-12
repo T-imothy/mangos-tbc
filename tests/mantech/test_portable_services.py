@@ -49,6 +49,10 @@ struct GameObject{
 struct Spell{Item* item;WorldObject* caster;SpellEntry entry;SpellEntry* m_spellInfo=&entry;Item* GetCastItem(){return item;}WorldObject* GetTrueCaster(){return caster;}};
 struct SpellScript{virtual SpellCastResult OnCheckCast(Spell*,bool)const{return SPELL_CAST_OK;}virtual void OnCast(Spell*)const{}virtual void OnSummon(Spell*,Creature*)const{}};
 """
+# Compile the production summon resolver too: the callback receives its output,
+# not the native spell_template entry. This reproduces the original regression.
+resolver=(root/'src/game/Entities/PortableRepairVendor.h').read_text()
+prefix += '\n'.join(line for line in resolver.splitlines() if not line.startswith('#include')) + '\n'
 suffix=r"""
 int main(){
     ManTechPortableMailboxSpell mailbox;ManTechPortableRepairSpell repair;
@@ -64,14 +68,20 @@ int main(){
     for(auto id:{65001u,65002u,18246u}){item.id=id;assert(mailbox.OnCheckCast(&spell,true)==SPELL_CAST_OK);mailbox.OnCast(&spell);assert(!player.map.added);}
     spell.item=nullptr;assert(mailbox.OnCheckCast(&spell,true)==SPELL_CAST_OK);mailbox.OnCast(&spell);assert(!player.map.added);spell.item=&item;item.id=65000;
     createSucceeds=false;int before=destroyed;mailbox.OnCast(&spell);assert(!player.map.added&&player.cleared==1206&&player.session.notices==1&&destroyed==before+1);createSucceeds=true;
-    item.id=65001;Creature bot;
+    item.id=65001;Creature bot;bot.id=PortableRepairVendor::ResolveSummonEntry(65001,44389,24780);assert(bot.id==65001);
     repair.OnSummon(&spell,&bot);assert(bot.faction==12);
     player.team=2;repair.OnSummon(&spell,&bot);assert(bot.faction==29);
     for(auto id:{65000u,65002u,34113u}){item.id=id;bot.faction=35;repair.OnSummon(&spell,&bot);assert(bot.faction==35);}
     item.id=65001;spell.item=nullptr;repair.OnSummon(&spell,&bot);assert(bot.faction==35);spell.item=&item;
-    bot.id=123;repair.OnSummon(&spell,&bot);assert(bot.faction==35);bot.id=24780;
+    bot.id=123;repair.OnSummon(&spell,&bot);assert(bot.faction==35);bot.id=PortableRepairVendor::CREATURE_ENTRY;
     repair.OnSummon(&spell,nullptr);spell.caster=nullptr;repair.OnSummon(&spell,&bot);assert(bot.faction==35);spell.caster=&player;
     player.type=3;repair.OnSummon(&spell,&bot);assert(bot.faction==35);
+    item.id=65001;player.type=TYPEID_PLAYER;spell.caster=&player;spell.item=&item;
+    bot.id=24780;bot.faction=190;repair.OnSummon(&spell,&bot);assert(bot.faction==190);
+    item.id=34113;bot.id=PortableRepairVendor::ResolveSummonEntry(34113,44389,24780);
+    assert(bot.id==24780);repair.OnSummon(&spell,&bot);assert(bot.faction==190);
+    item.id=65001;bot.id=PortableRepairVendor::ResolveSummonEntry(65001,44389,24780);player.team=ALLIANCE;
+    repair.OnSummon(&spell,&bot);assert(bot.faction==12);
     std::cout<<"PASS actual scripts: mailbox creation, lifetime/ownership, missing/wrong template, failed creation refund, item isolation, Alliance/Horde repair factions and native repair isolation\n";
 }
 """
