@@ -27,7 +27,6 @@
 #include "Maps/GridMapDefines.h"
 
 #include <atomic>
-#include "Memory/MemoryLedger.h"
 #include <mutex>
 
 class Creature;
@@ -47,8 +46,6 @@ class GridMap
     private:
 
         uint16 m_holes[16][16];
-        std::size_t m_payloadBytes = 0;
-        void AccountPayload(std::size_t bytes) { m_payloadBytes += bytes; ManTech::MemoryLedger::Add(ManTech::MemoryKind::Terrain, bytes, 0); }
         uint32 m_flags;
 
         // Area data
@@ -102,7 +99,6 @@ class GridMap
 
     public:
 
-        std::size_t PayloadBytes() const { return m_payloadBytes; }
         GridMap();
         ~GridMap();
 
@@ -204,7 +200,6 @@ class TerrainInfo : public Referencable<std::atomic_long>
 
         // global garbage collection timer
         ShortIntervalTimer i_timer;
-        uint32 m_budgetCheckMs = 0;
 
         VMAP::IVMapManager* m_vmgr;
 
