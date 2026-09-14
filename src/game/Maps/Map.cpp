@@ -802,6 +802,19 @@ uint32 Map::GetAllocatedGridsCount() const
     return count;
 }
 
+void Map::RememberRemovedObject(ObjectGuid guid)
+{
+    if (!m_objRemoveList.insert(guid).second)
+        return;
+    m_objRemoveOrder.push_back(guid);
+    if (m_objRemoveOrder.size() > 4096)
+    {
+        m_objRemoveList.erase(m_objRemoveOrder.front());
+        m_objRemoveOrder.pop_front();
+    }
+}
+
+
 #ifdef ENABLE_PLAYERBOTS
 void Map::GetPlayerbotAIObjectStats(uint64& aiObjects, uint64& strategies, uint64& actions, uint64& triggers, uint64& values)
 {
@@ -1715,7 +1728,7 @@ void Map::Remove(T* obj, bool remove)
             client->RemoveAtClient(obj, true);
     obj->GetClientGuidsIAmAt().clear();
 
-    m_objRemoveList.insert(obj->GetObjectGuid());
+    RememberRemovedObject(obj->GetObjectGuid());
 
     if (remove)
         // if option set then object already saved at this moment

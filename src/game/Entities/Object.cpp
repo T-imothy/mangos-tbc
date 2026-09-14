@@ -2737,6 +2737,12 @@ void WorldObject::UpdateVisibility(UpdateDataMapType& update_players)
                 continue;
             }
         }
+        else
+        {
+            // A departed client cannot receive updates on this map.
+            itr = m_clientGUIDsIAmAt.erase(itr);
+            continue;
+        }
 
         ++itr;
     }
