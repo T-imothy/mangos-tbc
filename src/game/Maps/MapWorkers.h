@@ -1,3 +1,4 @@
+#include "Util/DevDiagnostics.h"
 /*
 * This file is part of the CMaNGOS Project. See AUTHORS file for Copyright information
 *
@@ -79,10 +80,17 @@ class MapUpdateWorker : public Worker
     public:
         MapUpdateWorker(Map& map, uint32 diff, MapUpdater& updater) :
             Worker(updater), m_map(map), m_diff(diff)
-        {}
+        {
+#ifdef MANTECH_DEV_DIAGNOSTICS
+            m_diagQueued=ManTech::Diag::Now();
+#endif
+        }
 
         void execute() override
         {
+#ifdef MANTECH_DEV_DIAGNOSTICS
+            ManTech::Diag::Queue(m_diagQueued,m_map.GetId(),m_map.GetInstanceId());
+#endif
             m_map.Update(m_diff);
             GetWorker().update_finished();
         }
@@ -90,6 +98,9 @@ class MapUpdateWorker : public Worker
     private:
         Map& m_map;
         uint32 m_diff;
+#ifdef MANTECH_DEV_DIAGNOSTICS
+        std::uint64_t m_diagQueued=0;
+#endif
 };
 
 class GridCrawler : public Worker
@@ -102,6 +113,8 @@ class GridCrawler : public Worker
 
         void execute() override
         {
+    MANTECH_DIAG_CONTEXT(m_map.GetId(),m_map.GetInstanceId());
+            MANTECH_DIAG_SCOPE(GridWorker,1,nullptr);
             MaNGOS::ObjectUpdater obj_updater(m_objects, m_diff);
             TypeContainerVisitor<MaNGOS::ObjectUpdater, GridTypeMapContainer  > grid_object_update(obj_updater);    // For creature
             TypeContainerVisitor<MaNGOS::ObjectUpdater, WorldTypeMapContainer > world_object_update(obj_updater);   // For pets
@@ -135,6 +148,10 @@ class ObjectUpdateBuildWorker : public Worker
 
         void execute() override
         {
+#ifdef MANTECH_DEV_DIAGNOSTICS
+            MANTECH_DIAG_CONTEXT(unsigned(m_diagContext>>32),unsigned(m_diagContext));
+#endif
+    MANTECH_DIAG_SCOPE(ObjectBuild,1,nullptr);
             for (Object* object : m_objects)
                 object->BuildUpdateData(m_updates);
 
@@ -143,6 +160,9 @@ class ObjectUpdateBuildWorker : public Worker
         }
 
     private:
+#ifdef MANTECH_DEV_DIAGNOSTICS
+        std::uint64_t m_diagContext=ManTech::Diag::Context;
+#endif
         std::vector<Object*> m_objects;
         UpdateDataMapType& m_updates;
         MapUpdateTaskGroup& m_group;
@@ -159,6 +179,9 @@ class IdleBotAIUpdateWorker : public Worker
 
         void execute() override
         {
+#ifdef MANTECH_DEV_DIAGNOSTICS
+            MANTECH_DIAG_CONTEXT(unsigned(m_diagContext>>32),unsigned(m_diagContext));
+#endif
             for (size_t i = 0; i < m_count; ++i)
             {
                 auto const& update = m_updates[i];
@@ -186,6 +209,9 @@ class IdleBotAIUpdateWorker : public Worker
         }
 
     private:
+#ifdef MANTECH_DEV_DIAGNOSTICS
+        std::uint64_t m_diagContext=ManTech::Diag::Context;
+#endif
         IdleBotAIUpdateRequest const* m_updates;
         size_t m_count;
         uint32 m_jitterMs;

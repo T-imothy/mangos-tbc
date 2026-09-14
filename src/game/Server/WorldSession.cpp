@@ -1,3 +1,4 @@
+#include "Util/DevDiagnostics.h"
 /*
  * This file is part of the CMaNGOS Project. See AUTHORS file for Copyright information
  *
@@ -646,6 +647,7 @@ void WorldSession::ProcessByteBufferException(WorldPacket const& packet)
 /// Update the WorldSession (triggered by World update)
 bool WorldSession::Update(uint32 diff)
 {
+    MANTECH_DIAG_SCOPE(Session,32,nullptr);
     struct SessionUpdatePerformanceGuard
     {
         WorldSession& session;
@@ -1534,6 +1536,7 @@ void WorldSession::SendTransferAborted(uint32 mapid, uint8 reason, uint8 arg) co
 
 void WorldSession::ExecuteOpcode(OpcodeHandler const& opHandle, WorldPacket& packet)
 {
+    MANTECH_DIAG_SCOPE(Packet,32,nullptr);
     const uint32 performanceStart = WorldTimer::getMSTime();
     const uint16 opcode = packet.GetOpcode();
     const std::string opcodeName = packet.GetOpcodeName();
