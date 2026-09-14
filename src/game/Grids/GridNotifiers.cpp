@@ -112,7 +112,10 @@ void VisibleNotifier::Notify()
             // The object may already have left the map. Drop the one-sided
             // reference too, or every later camera pass copies it again.
             player.GetClientGuids().erase(*itr);
-            sLog.outCustomLog("Object was %s in current map.", player.GetMap()->m_objRemoveList.find(*itr) == player.GetMap()->m_objRemoveList.end() ? "not found" : "found");
+#ifdef ENABLE_PLAYERBOTS
+            if (player.isRealPlayer())
+#endif
+                sLog.outCustomLog("Object was %s in current map.", player.GetMap()->m_objRemoveList.find(*itr) == player.GetMap()->m_objRemoveList.end() ? "not found" : "found");
         }
         
 
