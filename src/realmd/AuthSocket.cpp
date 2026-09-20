@@ -341,10 +341,11 @@ bool AuthSocket::_HandleLogonChallenge()
         if ((remaining < sizeof(sAuthLogonChallengeBody) - AUTH_LOGON_MAX_NAME))
             return;
 
-        // The body is read into a fixed-size structure. Reject a forged size
-        // before handing it to the asynchronous socket read.
         if (remaining > sizeof(sAuthLogonChallengeBody))
+        {
+            self->Close();
             return;
+        }
 
         DEBUG_LOG("[AuthChallenge] got header, body is %#04x bytes", remaining);
 
@@ -494,7 +495,7 @@ bool AuthSocket::_HandleLogonChallenge()
                             pkt->append(self->srp.GetGeneratorModulo().AsByteArray());
                             *pkt << uint8(32);
                             pkt->append(self->srp.GetPrime().AsByteArray(32));
-                            pkt->append(s.AsByteArray());// 32 bytes
+                            pkt->append(s.AsByteArray(32));// 32 bytes
                             pkt->append(VersionChallenge.data(), VersionChallenge.size());
                             uint8 securityFlags = 0;
 
@@ -728,7 +729,10 @@ bool AuthSocket::_HandleReconnectChallenge()
             return;
 
         if (remaining > sizeof(sAuthLogonChallengeBody))
+        {
+            self->Close();
             return;
+        }
 
         ///- Session is closed unless overriden
         self->_status = STATUS_CLOSED;
