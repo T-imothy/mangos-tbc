@@ -2059,7 +2059,8 @@ void ObjectMgr::LoadCreatureModelRace()
 
 void ObjectMgr::LoadCreatureConditionalSpawn()
 {
-    sCreatureConditionalSpawnStore.Load();
+    // Faction-dependent spawn overrides are optional; zero overrides is valid.
+    sCreatureConditionalSpawnStore.Load(false);
 
     // post processing
     for (uint32 i = 1; i < sCreatureConditionalSpawnStore.GetMaxEntry(); ++i)
@@ -3020,7 +3021,17 @@ void ObjectMgr::LoadItemPrototypes()
         }
         else
         {
-            sLog.outErrorDb("Item (Entry: %u) not correct (not listed in list of existing items).", i);
+            // These server-defined items intentionally have no stock Item.dbc row.
+            // Keep the warning for every other item; subsequent validation still runs.
+            bool const mantechItem =
+                (i == 65000 && proto->Spells[0].SpellId == 1206) ||
+                (i == 65001 && proto->Spells[0].SpellId == 28020) ||
+                (i == 65002 && proto->Spells[0].SpellId == 21342) ||
+                (i == 65003 && proto->Spells[0].SpellId == 22721);
+            if (mantechItem)
+                sLog.outString("ManTech custom item %u loaded from item_template (no stock Item.dbc entry).", i);
+            else
+                sLog.outErrorDb("Item (Entry: %u) not correct (not listed in list of existing items).", i);
         }
 
         if (proto->Class >= MAX_ITEM_CLASS)

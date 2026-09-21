@@ -7745,8 +7745,10 @@ SpellEvent::SpellEvent(Spell* spell) : BasicEvent()
         }
         else
         {
-            sLog.outError("~SpellEvent: %s %u tried to delete non-deletable spell %u. Was not deleted, causes memory leak.",
-                          (toDelete->GetCaster()->GetTypeId() == TYPEID_PLAYER ? "Player" : "Creature"), toDelete->GetCaster()->GetGUIDLow(), toDelete->m_spellInfo->Id);
+            sLog.outError("~SpellEvent: %s %u tried to delete non-deletable spell %u. Was not deleted, causes memory leak. entry=%u map=%u spell_state=%u executed_currently=%u",
+                          (toDelete->GetCaster()->GetTypeId() == TYPEID_PLAYER ? "Player" : "Creature"), toDelete->GetCaster()->GetGUIDLow(), toDelete->m_spellInfo->Id,
+                          toDelete->GetCaster()->GetEntry(), toDelete->GetCaster()->GetMapId(),
+                          uint32(toDelete->getState()), uint32(toDelete->IsExecutedCurrently()));
         }
     });
 }
