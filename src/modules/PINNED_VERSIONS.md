@@ -8,3 +8,5 @@ These sources are vendored so a rebuild cannot silently pull a different module 
 - Playerbots: `7a733745` (ManTech TBC compatibility branch)
 
 Local compatibility and safety changes are maintained in this core branch.
+
+- Transmog: `0abf98b38e80724b5a2847b029ccf72e09d98ef2` from flekz-games/cmangos-transmog, with local compatibility, request-validation and non-destructive installation changes.

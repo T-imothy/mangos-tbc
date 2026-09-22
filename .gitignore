@@ -104,3 +104,6 @@ src/modules/*
 !src/modules/dualspec/**
 !src/modules/trainingdummies/
 !src/modules/trainingdummies/**
+
+!src/modules/transmog/
+!src/modules/transmog/**
