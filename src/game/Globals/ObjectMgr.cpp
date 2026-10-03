@@ -3027,7 +3027,8 @@ void ObjectMgr::LoadItemPrototypes()
                 (i == 65000 && proto->Spells[0].SpellId == 1206) ||
                 (i == 65001 && proto->Spells[0].SpellId == 28020) ||
                 (i == 65002 && proto->Spells[0].SpellId == 21342) ||
-                (i == 65003 && proto->Spells[0].SpellId == 22721);
+                (i == 65003 && proto->Spells[0].SpellId == 22721) ||
+                (i == 65004 && proto->Spells[0].SpellId == 7977);
             if (mantechItem)
                 sLog.outString("ManTech custom item %u loaded from item_template (no stock Item.dbc entry).", i);
             else
