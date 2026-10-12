@@ -1388,3 +1388,15 @@ DELETE FROM dbscripts_on_relay WHERE id=1908336;
 INSERT INTO dbscripts_on_relay(`id`,`delay`,`priority`,`command`,`datalong`,`datalong2`,`datalong3`,`buddy_entry`,`search_radius`,`data_flags`,`dataint`,`dataint2`,`dataint3`,`dataint4`,`datafloat`,`x`,`y`,`z`,`o`,`speed`,`condition_id`,`comments`) VALUES('1908336','0','0','31','0','5','0','28011','5','2048','0','0','0','0','0','0','0','0','0','0','0','ManTech Sunfury - optional actor guard for one scene step');
 INSERT INTO dbscripts_on_relay(`id`,`delay`,`priority`,`command`,`datalong`,`datalong2`,`datalong3`,`buddy_entry`,`search_radius`,`data_flags`,`dataint`,`dataint2`,`dataint3`,`dataint4`,`datafloat`,`x`,`y`,`z`,`o`,`speed`,`condition_id`,`comments`) VALUES('1908336','0','1','35','6','0','0','28011','5','2049','0','0','0','0','0','0','0','0','0','0','0','Netherstorm - Sunfury Warp-Master - SendAIEventB to StringID');
 UPDATE dbscripts_on_relay SET command=45,datalong=1908336,datalong2=0,datalong3=0,buddy_entry=0,search_radius=0,data_flags=0,dataint=0,dataint2=0,dataint3=0,dataint4=0,x=0,y=0,z=0,o=0,speed=0,condition_id=0 WHERE id=18033 AND delay=9000 AND priority=2 AND command=35 AND buddy_entry=28011;
+
+-- Native map fallbacks apply only after existing area/zone links fail.
+-- Verified WorldSafeLocs.dbc IDs and existing native faction assignments.
+-- Do not fabricate zone0 records or send Outland ghosts to another continent.
+INSERT INTO game_graveyard_zone(id,ghost_loc,link_kind,faction)
+ SELECT 249,1,1,0 FROM game_graveyard_zone
+ WHERE id=249 AND ghost_loc=17 AND link_kind=0 AND faction=0
+ AND NOT EXISTS(SELECT 1 FROM game_graveyard_zone WHERE id=249 AND ghost_loc=1 AND link_kind=1);
+
+INSERT INTO game_graveyard_zone(id,ghost_loc,link_kind,faction) SELECT 919,530,1,67 FROM game_graveyard_zone WHERE id=919 AND ghost_loc=3483 AND link_kind=0 AND faction=67 AND NOT EXISTS(SELECT 1 FROM game_graveyard_zone WHERE id=919 AND ghost_loc=530 AND link_kind=1);
+INSERT INTO game_graveyard_zone(id,ghost_loc,link_kind,faction) SELECT 920,530,1,469 FROM game_graveyard_zone WHERE id=920 AND ghost_loc=3483 AND link_kind=0 AND faction=469 AND NOT EXISTS(SELECT 1 FROM game_graveyard_zone WHERE id=920 AND ghost_loc=530 AND link_kind=1);
+INSERT INTO game_graveyard_zone(id,ghost_loc,link_kind,faction) SELECT 994,530,1,0 FROM game_graveyard_zone WHERE id=994 AND ghost_loc=3703 AND link_kind=0 AND faction=0 AND NOT EXISTS(SELECT 1 FROM game_graveyard_zone WHERE id=994 AND ghost_loc=530 AND link_kind=1);
