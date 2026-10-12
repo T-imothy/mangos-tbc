@@ -146,8 +146,8 @@ Creature::Creature(CreatureSubtype subtype) : Unit(),
     m_isInvisible(false), m_ignoreMMAP(false), m_forceAttackingCapability(false),
     m_settings(this),
     m_countSpawns(false),
-    m_creatureGroup(nullptr), m_imposedCooldown(false), m_healthMultiplier(1.f), m_damageMultiplier(1.f), m_baseAP(0), m_baseRAP(0),
-    m_creatureInfo(nullptr), m_mountInfo(nullptr), m_delayedPetSpells(false),
+    m_creatureGroup(nullptr), m_imposedCooldown(false),  m_delayedPetSpells(false), m_healthMultiplier(1.f), m_damageMultiplier(1.f), m_baseAP(0), m_baseRAP(0),
+    m_creatureInfo(nullptr), m_mountInfo(nullptr),
     m_combatOnlyStealth(false)
 {
     m_valuesCount = UNIT_END;
@@ -1375,7 +1375,7 @@ void Creature::SelectLevel(uint32 forcedLevel /*= USE_DEFAULT_DATABASE_LEVEL*/)
             mainMinDmg = ((cCLS->BaseDamage - cCLS->BaseDamage * (cinfo->DamageVariance / 2)));
             auto modifiedMainMinDmg = (mainMinDmg + (cCLS->BaseMeleeAttackPower / 14.0f)) * damageMulti;
             mainMaxDmg = (cCLS->BaseDamage + cCLS->BaseDamage * (cinfo->DamageVariance / 2));
-            auto modifiedMainMaxDmg = ( + (cCLS->BaseMeleeAttackPower / 14.0f)) * damageMulti;
+            auto modifiedMainMaxDmg = (mainMaxDmg + (cCLS->BaseMeleeAttackPower / 14.0f)) * damageMulti;
             offMinDmg = mainMinDmg; // Unitmod handles 50%
             offMaxDmg = mainMaxDmg;
             minRangedDmg = (cCLS->BaseDamage - cCLS->BaseDamage * (cinfo->DamageVariance / 2));
