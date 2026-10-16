@@ -326,3 +326,8 @@ if(WIN32 AND MSVC)
   add_test(NAME geddon_patrol COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/geddon_patrol_regression.py ${PROJECT_SOURCE_DIR})
   set_tests_properties(geddon_patrol PROPERTIES TIMEOUT 120)
 endif()
+
+if(WIN32 AND MSVC AND BUILD_PLAYERBOTS)
+  add_test(NAME battleground_objective_recovery COMMAND ${Python3_EXECUTABLE} ${_arch4_playerbots_source}/tests/classic_bg_recovery_regression.py)
+  set_tests_properties(battleground_objective_recovery PROPERTIES TIMEOUT 180)
+endif()
