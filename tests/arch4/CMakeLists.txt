@@ -331,3 +331,8 @@ if(WIN32 AND MSVC AND BUILD_PLAYERBOTS)
   add_test(NAME battleground_objective_recovery COMMAND ${Python3_EXECUTABLE} ${_arch4_playerbots_source}/tests/classic_bg_recovery_regression.py)
   set_tests_properties(battleground_objective_recovery PROPERTIES TIMEOUT 180)
 endif()
+
+if(WIN32 AND MSVC AND BUILD_PLAYERBOTS)
+  add_test(NAME bot_preparation_target COMMAND ${Python3_EXECUTABLE} ${_arch4_playerbots_source}/tests/bot_preparation_target_regression.py)
+  set_tests_properties(bot_preparation_target PROPERTIES TIMEOUT 180)
+endif()
