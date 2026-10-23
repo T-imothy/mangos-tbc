@@ -343,3 +343,8 @@ if(WIN32 AND MSVC AND BUILD_MODULE_DUALSPEC)
   add_test(NAME dualspec_action_mirror COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/test_dualspec_action_mirror.py)
   set_tests_properties(dualspec_lifecycle dualspec_action_mirror PROPERTIES TIMEOUT 120)
 endif()
+
+if(WIN32 AND MSVC)
+  add_test(NAME seasonal_condition COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/seasonal_condition_regression.py ${PROJECT_SOURCE_DIR})
+  set_tests_properties(seasonal_condition PROPERTIES TIMEOUT 120)
+endif()

@@ -143,8 +143,8 @@ bool ShadeOfTheHorsemanData::IsConditionFulfilled(uint32 conditionId, uint32 are
                    (m_shadeOfTheHorsemanAttackPhases[SHADE_VILLAGE_FALCONWING_SQUARE] == SHADE_PHASE_VICTORY && areaId == AREAID_FALCONWING_SQUARE);
         case INSTANCE_CONDITION_ID_LET_THE_FIRES_COME_ALLIANCE:
             return ((m_shadeOfTheHorsemanAttackPhases[SHADE_VILLAGE_GOLDSHIRE] == SHADE_PHASE_ALL_CLEAR || m_shadeOfTheHorsemanAttackPhases[SHADE_VILLAGE_GOLDSHIRE] == SHADE_PHASE_VICTORY) && areaId == AREAID_GOLDSHIRE) || 
-                   ((m_shadeOfTheHorsemanAttackPhases[SHADE_VILLAGE_KHARANOS] == SHADE_PHASE_ALL_CLEAR || m_shadeOfTheHorsemanAttackPhases[SHADE_VILLAGE_GOLDSHIRE] == SHADE_PHASE_VICTORY) && areaId == AREAID_KHARANOS) ||
-                   ((m_shadeOfTheHorsemanAttackPhases[SHADE_VILLAGE_AZURE_WATCH] == SHADE_PHASE_ALL_CLEAR || m_shadeOfTheHorsemanAttackPhases[SHADE_VILLAGE_GOLDSHIRE] == SHADE_PHASE_VICTORY) && areaId == AREAID_AZURE_WATCH);
+                   ((m_shadeOfTheHorsemanAttackPhases[SHADE_VILLAGE_KHARANOS] == SHADE_PHASE_ALL_CLEAR || m_shadeOfTheHorsemanAttackPhases[SHADE_VILLAGE_KHARANOS] == SHADE_PHASE_VICTORY) && areaId == AREAID_KHARANOS) ||
+                   ((m_shadeOfTheHorsemanAttackPhases[SHADE_VILLAGE_AZURE_WATCH] == SHADE_PHASE_ALL_CLEAR || m_shadeOfTheHorsemanAttackPhases[SHADE_VILLAGE_AZURE_WATCH] == SHADE_PHASE_VICTORY) && areaId == AREAID_AZURE_WATCH);
         case INSTANCE_CONDITION_ID_LET_THE_FIRES_COME_HORDE:
             return ((m_shadeOfTheHorsemanAttackPhases[SHADE_VILLAGE_BRILL] == SHADE_PHASE_ALL_CLEAR || m_shadeOfTheHorsemanAttackPhases[SHADE_VILLAGE_BRILL] == SHADE_PHASE_VICTORY) && areaId == AREAID_BRILL) ||
                    ((m_shadeOfTheHorsemanAttackPhases[SHADE_VILLAGE_RAZOR_HILL] == SHADE_PHASE_ALL_CLEAR || m_shadeOfTheHorsemanAttackPhases[SHADE_VILLAGE_RAZOR_HILL] == SHADE_PHASE_VICTORY) && areaId == AREAID_RAZOR_HILL) ||

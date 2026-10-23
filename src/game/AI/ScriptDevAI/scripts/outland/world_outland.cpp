@@ -469,7 +469,7 @@ struct world_map_outland : public ScriptedMap, public TimerManager
                 return m_bashirPhase > BASHIR_PHASE_START;
         }
         if (instanceConditionId >= INSTANCE_CONDITION_ID_FIRE_BRIGADE_PRACTICE_GOLDSHIRE && instanceConditionId <= INSTANCE_CONDITION_ID_LET_THE_FIRES_COME_HORDE)
-            return m_shadeData.IsConditionFulfilled(instanceConditionId, player->GetAreaId());
+            return player && m_shadeData.IsConditionFulfilled(instanceConditionId, player->GetAreaId());
 
         script_error_log("world_map_outland::CheckConditionCriteriaMeet called with unsupported Id %u. Called with param plr %s, src %s, condition source type %u",
             instanceConditionId, player ? player->GetGuidStr().c_str() : "nullptr", conditionSource ? conditionSource->GetGuidStr().c_str() : "nullptr", conditionSourceType);

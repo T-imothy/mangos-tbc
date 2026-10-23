@@ -283,6 +283,14 @@ bool inline ConditionEntry::Evaluate(WorldObject const* target, Map const* map, 
             if (!map)
                 map = target ? target->GetMap() : source->GetMap();
 
+            // Quest discovery also evaluates remote quests. These village events
+            // exist only on the three original world maps, never in Northrend,
+            // dungeons or battlegrounds. Do not dispatch them to unrelated scripts.
+            if (m_value1 >= INSTANCE_CONDITION_ID_FIRE_BRIGADE_PRACTICE_GOLDSHIRE &&
+                m_value1 <= INSTANCE_CONDITION_ID_LET_THE_FIRES_COME_HORDE &&
+                (!player || (map->GetId() != 0 && map->GetId() != 1 && map->GetId() != 530)))
+                return false;
+
             if (InstanceData* data = map->GetInstanceData())
                 return data->CheckConditionCriteriaMeet(player, m_value1, source, conditionSourceType);
             return false;
