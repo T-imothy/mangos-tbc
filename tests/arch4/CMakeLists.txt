@@ -348,3 +348,8 @@ if(WIN32 AND MSVC)
   add_test(NAME seasonal_condition COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/seasonal_condition_regression.py ${PROJECT_SOURCE_DIR})
   set_tests_properties(seasonal_condition PROPERTIES TIMEOUT 120)
 endif()
+
+if(WIN32 AND MSVC AND BUILD_PLAYERBOTS)
+  add_test(NAME logout_save COMMAND ${Python3_EXECUTABLE} ${_arch4_playerbots_source}/tests/logout_save_regression.py ${_arch4_playerbots_source})
+  set_tests_properties(logout_save PROPERTIES TIMEOUT 120)
+endif()

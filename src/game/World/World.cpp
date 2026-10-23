@@ -33,6 +33,7 @@
 #include "Platform/Define.h"
 #include "SystemConfig.h"
 #include "Log/Log.h"
+#include "Util/LifecyclePhase.h"
 #include "Server/Opcodes.h"
 #include "Server/WorldSession.h"
 #include "Server/WorldPacket.h"
@@ -212,12 +213,12 @@ World::~World()
 void World::CleanupsBeforeStop()
 {
 #ifdef ENABLE_PLAYERBOTS
-    sRandomPlayerbotMgr.LogoutAllBots();
+    { LifecyclePhase phase("shutdown.bot_logout"); sRandomPlayerbotMgr.LogoutAllBots(); }
 #endif
-    KickAll(true);                                   // save and kick all players
-    UpdateSessions(1);                               // real players unload required UpdateSessions call
+    { LifecyclePhase phase("shutdown.player_save"); KickAll(true); }
+    { LifecyclePhase phase("shutdown.sessions"); UpdateSessions(1); }
     sBattleGroundMgr.DeleteAllBattleGrounds();       // unload battleground templates before different singletons destroyed
-    sMapMgr.UnloadAll();                             // unload all grids (including locked in memory)
+    { LifecyclePhase phase("shutdown.maps"); sMapMgr.UnloadAll(); }
 }
 
 /// Find a session by its id
@@ -1238,7 +1239,7 @@ void World::SetInitialWorldSettings()
     sObjectMgr.LoadCreatureSpawnEntry();
 
     sLog.outString("Loading Creature Data...");
-    sObjectMgr.LoadCreatures();
+    { LifecyclePhase phase("startup.creatures"); sObjectMgr.LoadCreatures(); }
 
     sLog.outString("Loading Gameobject Spawn Entry Data..."); // must be before LoadGameObjects
     sObjectMgr.LoadGameObjectSpawnEntry();
@@ -1558,7 +1559,7 @@ void World::SetInitialWorldSettings()
 
     ///- Initialize MapManager
     sLog.outString("Starting Map System");
-    sMapMgr.Initialize();
+    { LifecyclePhase phase("startup.continents"); sMapMgr.Initialize(); }
     sLog.outString();
 
     ///- Initialize Battlegrounds
@@ -1623,7 +1624,7 @@ void World::SetInitialWorldSettings()
 #endif
 
 #ifdef ENABLE_PLAYERBOTS
-    sPlayerbotAIConfig.Initialize();
+    { LifecyclePhase phase("startup.playerbots"); sPlayerbotAIConfig.Initialize(); }
 #ifndef BUILD_AHBOT
     auctionbot.Init();
 #endif
