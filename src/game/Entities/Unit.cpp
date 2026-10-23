@@ -9726,7 +9726,7 @@ float Unit::GetTotalAttackPowerValue(WeaponAttackType attType) const
 {
     if (attType == RANGED_ATTACK)
     {
-        int32 ap = GetInt32Value(UNIT_FIELD_RANGED_ATTACK_POWER) + GetInt32Value(UNIT_FIELD_RANGED_ATTACK_POWER_MODS);
+        int32 ap = GetInt32Value(UNIT_FIELD_RANGED_ATTACK_POWER) + GetInt16Value(UNIT_FIELD_RANGED_ATTACK_POWER_MODS, size_t(AttackPowerModSign::MOD_SIGN_POS)) + GetInt16Value(UNIT_FIELD_RANGED_ATTACK_POWER_MODS, size_t(AttackPowerModSign::MOD_SIGN_NEG));
         if (ap < 0)
             return 0.0f;
         return ap * (1.0f + GetFloatValue(UNIT_FIELD_RANGED_ATTACK_POWER_MULTIPLIER));
@@ -10504,6 +10504,10 @@ bool Unit::SetConfused(bool apply, ObjectGuid casterGuid, uint32 spellID)
                 Unit* source = (fears.empty() ? nullptr : fears.back()->GetCaster());
                 GetMotionMaster()->MoveFleeing(source ? source : this);
             }
+
+            // The generator that would give control back may be gone (e.g. cleared on uncharm)
+            if (!apply && IsPlayer() && !HasCharmer() && !IsFleeing() && !IsInPanic())
+                static_cast<Player*>(this)->UpdateClientControl(this, true);
         }
 
         if (apply)
@@ -10547,6 +10551,10 @@ bool Unit::SetFleeing(bool apply, ObjectGuid casterGuid/* = ObjectGuid()*/, uint
                 Unit* source = (IsInWorld() ? GetMap()->GetUnit(casterGuid) : nullptr);
                 GetMotionMaster()->MoveFleeing((source ? source : this), duration);
             }
+
+            // The generator that would give control back may be gone (e.g. cleared on uncharm)
+            if (!apply && IsPlayer() && !HasCharmer() && !IsConfused() && !IsInPanic())
+                static_cast<Player*>(this)->UpdateClientControl(this, true);
         }
 
         if (apply)
@@ -12241,8 +12249,20 @@ void Unit::Uncharm(Unit* charmed, uint32 /*spellId*/)
         charmed->GetCharmInfo()->ResetCharmState();
         charmedPlayer->DeleteCharmInfo();
 
+        const bool panic = charmed->IsInPanic(), fleeing = charmed->IsFleeing(), confused = charmed->IsConfused();
+
         charmed->GetMotionMaster()->Clear(false, true);
         charmed->GetMotionMaster()->MoveIdle();
+
+        // The clear destroyed the confused or fleeing movement of a player still under crowd control
+        if (confused)
+            charmed->GetMotionMaster()->MoveConfused();
+        else if (fleeing && !panic)
+        {
+            AuraList const& fears = charmed->GetAurasByType(SPELL_AURA_MOD_FEAR);
+            Unit* source = (fears.empty() ? nullptr : fears.back()->GetCaster());
+            charmed->GetMotionMaster()->MoveFleeing(source ? source : this);
+        }
 
         charmed->DeleteThreatList();
 
@@ -12316,7 +12336,7 @@ void Unit::Uncharm(Unit* charmed, uint32 /*spellId*/)
 void Unit::RemoveUnattackableTargets(Unit* charmer)
 {
     // first find friendly target (stopping combat here is not recommended because m_attackers will be modified)
-    AttackerSet friendlyTargets;
+    std::set<std::pair<Unit*, float>> friendlyTargets;
     for (auto itr = getAttackers().begin(); itr != getAttackers().end(); ++itr)
     {
         Unit* attacker = (*itr);
@@ -12324,7 +12344,7 @@ void Unit::RemoveUnattackableTargets(Unit* charmer)
             continue;
 
         if (CanAttack(attacker))
-            friendlyTargets.insert(attacker);
+            friendlyTargets.insert({attacker, 0.f});
     }
 
     for (auto itr = getThreatManager().getThreatList().begin(); itr != getThreatManager().getThreatList().end(); ++itr)
@@ -12334,16 +12354,16 @@ void Unit::RemoveUnattackableTargets(Unit* charmer)
             continue;
 
         if (!CanAttack(attacker))
-            friendlyTargets.insert(attacker);
+            friendlyTargets.insert({attacker, (*itr)->getThreat()});
     }
 
     // now stop attackers combat and transfer threat generated from this to owner, also get the total generated threat
-    for (auto attacker : friendlyTargets)
+    for (auto&[attacker, threat] : friendlyTargets)
     {
         attacker->AttackStop(true, true);
         attacker->getThreatManager().modifyThreatPercent(this, -101);     // only remove the possessed creature from threat list because it can be filled by other players
         if (charmer && IsPropagatingThreatToOwner())
-            attacker->AddThreat(charmer);
+            attacker->AddThreat(charmer, threat);
     }
 }
 

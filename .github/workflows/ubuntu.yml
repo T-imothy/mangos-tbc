@@ -34,7 +34,7 @@ jobs:
             COMPILER_CC: clang
             COMPILER_PP: clang++
             USE_PCH: ON
-            EXTRA_BUILD: "-DBUILD_EXTRACTORS=ON -DBUILD_AHBOT=ON -DBUILD_PLAYERBOT=ON "
+            EXTRA_BUILD: "-DBUILD_EXTRACTORS=ON -DBUILD_AHBOT=ON -DBUILD_PLAYERBOTS=ON "
 
     steps:
       - name: Checkout
@@ -105,7 +105,7 @@ jobs:
           echo "GIT_SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
 
       - name: Notify
-        uses: rjstone/discord-webhook-notify@v2.3.0
+        uses: rjstone/discord-webhook-notify@v2.3.1
         with:
           severity: error
           description: |
