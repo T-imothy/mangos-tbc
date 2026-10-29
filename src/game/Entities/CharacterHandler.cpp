@@ -215,22 +215,22 @@ bool LoginQueryHolder::Initialize()
     return res;
 }
 
-// don't call WorldSession directly
-// it may get deleted before the query callbacks get executed
-// instead pass an account id to this handler
+// Don't call WorldSession directly, because it may get deleted before the query
+// callbacks get executed. Instead, pass an account id to these handlers.
+
+void HandleCharEnumCallback(std::unique_ptr<QueryResult> result, uint32 account)
+{
+    WorldSession* session = sWorld.FindSession(account);
+    if (!session)
+    {
+        return;
+    }
+    session->HandleCharEnum(std::move(result));
+}
+
 class CharacterHandler
 {
     public:
-        void HandleCharEnumCallback(QueryResult* result, uint32 account)
-        {
-            WorldSession* session = sWorld.FindSession(account);
-            if (!session)
-            {
-                delete result;
-                return;
-            }
-            session->HandleCharEnum(result);
-        }
 
         void HandlePlayerLoginCallback(QueryResult* /*dummy*/, SqlQueryHolder* holder)
         {
@@ -294,7 +294,7 @@ class CharacterHandler
 #endif
 } chrHandler;
 
-void WorldSession::HandleCharEnum(QueryResult* result)
+void WorldSession::HandleCharEnum(std::unique_ptr<QueryResult> queryResult)
 {
     WorldPacket data(SMSG_CHAR_ENUM, 100);                  // we guess size
 
@@ -302,18 +302,16 @@ void WorldSession::HandleCharEnum(QueryResult* result)
 
     data << num;
 
-    if (result)
+    if (queryResult)
     {
         do
         {
-            uint32 guidlow = (*result)[0].GetUInt32();
+            uint32 guidlow = (*queryResult)[0].GetUInt32();
             DETAIL_LOG("Build enum data for char guid %u from account %u.", guidlow, GetAccountId());
-            if (Player::BuildEnumData(result, data))
+            if (Player::BuildEnumData(queryResult.get(), data))
                 ++num;
         }
-        while (result->NextRow());
-
-        delete result;
+        while (queryResult->NextRow());
     }
 
     data.put<uint8>(0, num);
@@ -324,7 +322,8 @@ void WorldSession::HandleCharEnum(QueryResult* result)
 void WorldSession::HandleCharEnumOpcode(WorldPacket& /*recv_data*/)
 {
     /// get all the data necessary for loading all characters (along with their pets) on the account
-    CharacterDatabase.AsyncPQueryPriority(&chrHandler, &CharacterHandler::HandleCharEnumCallback, GetAccountId(),
+    auto queryCallback = std::bind(HandleCharEnumCallback, std::placeholders::_1, GetAccountId());
+    CharacterDatabase.AsyncPQueryPriority(std::move(queryCallback),
                                   !sWorld.getConfig(CONFIG_BOOL_DECLINED_NAMES_USED) ?
                                   //   ------- Query Without Declined Names --------
                                   //           0               1                2                3                 4                  5                       6                        7

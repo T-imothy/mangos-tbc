@@ -484,7 +484,7 @@ class WorldSession
         void HandleCharDeleteOpcode(WorldPacket& recvPacket);
         void HandleCharCreateOpcode(WorldPacket& recvPacket);
         void HandlePlayerLoginOpcode(WorldPacket& recvPacket);
-        void HandleCharEnum(QueryResult* result);
+        void HandleCharEnum(std::unique_ptr<QueryResult> queryResult);
         void HandlePlayerLogin(LoginQueryHolder* holder);
         void HandlePlayerReconnect();
 
